@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import "./ui.css";
 
 export const metadata: Metadata = {
-  title: "MonoMolds",
-  description: "Handmade molds for corpus cakes",
+  title: {
+    default: "Mono Molds - ręcznie wykonywane formy silikonowe",
+    template: "%s | Mono Molds",
+  },
+  description:
+    "Ręcznie wykonywane formy silikonowe dla cukierników i domowych pasjonatów wypieków.",
 };
 
 export default function RootLayout({
@@ -23,11 +21,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="pl" className="h-full antialiased">
+      <body className="flex min-h-full flex-col">
+        <a href="#main-content" className="skip-link">
+          Przejdź do treści
+        </a>
+        {/* Every page shares this header and footer. Only the main content changes. */}
+        {/* Header and footer are shared by every route. The page content sits between them. */}
+        <SiteHeader />
+        <main id="main-content" className="flex-1">
+          {children}
+        </main>
+        <SiteFooter />
+      </body>
     </html>
   );
 }

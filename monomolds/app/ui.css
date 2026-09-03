@@ -1,0 +1,82 @@
+/* Shared building blocks: buttons, fields, prices, product cards and messages.
+   These styles work on any page. Test-page-only styles live in ui-kit/showcase.css. */
+.ui-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: .6rem;
+  min-height: 48px; min-width: 44px; padding: .7rem 1.15rem;
+  border: 1px solid transparent; border-radius: .65rem;
+  font: inherit; font-size: .9rem; font-weight: 650; line-height: 1.5;
+  text-align: center; text-decoration: none; cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.ui-button--primary { background: var(--accent); color: var(--on-accent); }
+.ui-button--secondary { background: var(--surface); color: var(--foreground); border-color: #676b63; }
+.ui-button--ghost { background: transparent; color: var(--foreground); }
+.ui-button--danger { background: var(--danger); color: var(--background); }
+.ui-button:disabled { background: var(--surface-raised); color: var(--muted); border-color: var(--border); cursor: not-allowed; }
+.ui-button[aria-busy="true"] { cursor: progress; }
+.ui-button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.ui-button:active:not(:disabled):not(:focus-visible) { transform: scale(.97); }
+.ui-button:focus-visible { transition: none; }
+.ui-icon-button { width: 48px; padding: .7rem; flex: 0 0 auto; }
+.ui-kit-shortcut { min-height: 44px; padding: .5rem .75rem; font-size: .75rem; white-space: nowrap; }
+.ui-arrow { display: inline-block; transition: transform 160ms var(--ease-out); }
+.ui-field { display: grid; gap: .5rem; min-width: 0; }
+.ui-field > label { font-weight: 550; }
+.ui-input { width: 100%; min-width: 0; min-height: 48px; padding: .75rem; border: 1px solid #676b63; border-radius: .65rem; background: var(--surface); color: var(--foreground); font: inherit; font-size: 1rem; line-height: 1.5; }
+textarea.ui-input { resize: vertical; min-height: 8rem; }
+.ui-input::placeholder { color: var(--muted); opacity: 1; }
+.ui-input[aria-invalid="true"] { border-color: var(--danger); }
+.ui-input:disabled { color: var(--muted); background: var(--surface-raised); cursor: not-allowed; }
+.ui-input:read-only:not(select) { border-style: dashed; }
+.ui-input:focus-visible { border-color: var(--accent); }
+.ui-field-note, .ui-muted { color: var(--muted); font-size: .9rem; line-height: 1.7; }
+.ui-field-note { font-weight: 400; }
+.ui-field-error { color: var(--danger); font-size: .9rem; line-height: 1.6; }
+.ui-checkbox { display: flex; gap: .75rem; align-items: center; min-height: 44px; cursor: pointer; line-height: 1.6; }
+.ui-checkbox input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--accent); }
+.ui-checkbox:has(input:disabled) { color: var(--muted); cursor: not-allowed; }
+.ui-price { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ui-price > span:first-child, .ui-price del { white-space: nowrap; }
+.ui-price del { color: var(--muted); font-size: .875rem; font-weight: 400; }
+.ui-price small { flex-basis: 100%; color: var(--muted); font-size: .75rem; font-weight: 400; line-height: 1.6; }
+.ui-badge { border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: .15rem .5rem; font-size: .7rem; font-weight: 550; }
+.ui-product-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem 1.5rem; margin-top: 1.5rem; }
+.ui-product-card { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: .85rem; }
+.ui-product-link { color: var(--foreground); text-decoration: none; border-radius: .75rem; }
+.ui-product-link h3 { margin-top: 1rem; font-size: 1.15rem; font-weight: 550; line-height: 1.5; overflow-wrap: anywhere; }
+.ui-product-media { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: .85rem; overflow: hidden; background: var(--surface); }
+.ui-product-image { object-fit: contain; transition: transform 200ms var(--ease-out); }
+.ui-image-placeholder { display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; text-align: center; font-size: .8rem; color: var(--muted); }
+.ui-availability { font-size: .8rem; color: var(--muted); margin-top: auto; }
+.ui-notice { display: flex; align-items: start; gap: 1rem; padding: 1.15rem; background: var(--surface); border-left: 3px solid var(--accent); border-radius: 0 .65rem .65rem 0; overflow-wrap: anywhere; }
+.ui-notice--success { border-color: #a4c6a0; }
+.ui-notice--error { border-color: var(--danger); }
+.ui-notice-icon { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto; border: 1px solid currentColor; border-radius: 50%; }
+.ui-notice-title { font-weight: 600; }
+.ui-notice-body { margin-top: .4rem; color: var(--muted); font-size: .9rem; line-height: 1.7; }
+.ui-notice-body .ui-button { margin-top: .75rem; }
+.ui-empty { display: grid; justify-items: start; gap: 1.25rem; padding-block: 2.5rem; max-width: 40rem; }
+.ui-empty h2 { font-size: 1.5rem; }
+.ui-skeleton { background: var(--surface-raised); }
+.ui-skeleton-line { height: 1rem; border-radius: .25rem; width: 80%; }
+.ui-skeleton-short { width: 40%; }
+.ui-page-shell { padding-block: clamp(3rem, 8vw, 7rem); min-height: 55vh; }
+.ui-page-shell h1 { font-size: clamp(2.25rem, 5vw, 4rem); letter-spacing: -.04em; line-height: 1.1; margin-block: 1.25rem 2rem; }
+.ui-page-shell .ui-notice { max-width: 42rem; margin-bottom: 2rem; }
+/* Give cards more columns only when there is enough room to read their names. */
+@media (min-width: 640px) { .ui-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .ui-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (hover: hover) and (pointer: fine) {
+  .ui-button--primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .ui-button--secondary:hover:not(:disabled), .ui-button--ghost:hover:not(:disabled) { background: var(--surface-raised); }
+  .ui-button--danger:hover:not(:disabled) { background: #f58b86; }
+  .ui-product-link:hover h3 { text-decoration: underline; text-underline-offset: .25rem; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .ui-button:hover:not(:disabled):not(:focus-visible) .ui-arrow { transform: translateX(3px); }
+  .ui-product-link:hover:not(:focus-visible) .ui-product-image { transform: scale(1.025); }
+}
+/* Respect the visitor's choice to reduce movement. Text and focus still show state. */
+@media (prefers-reduced-motion: reduce) {
+  .ui-button:active:not(:disabled):not(:focus-visible), .ui-arrow, .ui-product-image { transform: none; }
+}
