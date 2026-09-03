@@ -34,3 +34,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large local-only 3D test asset. Keep it on the developer machine, not in Git.
+/monomolds/public/Monkey.glb

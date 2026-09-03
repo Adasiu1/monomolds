@@ -11,6 +11,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 Build a small, trustworthy Polish e-commerce website for handmade silicone cake moulds. The first release is an MVP for customers in Poland.
 
 - All customer-facing content, validation messages, metadata, checkout copy, and transactional email content must be in Polish.
+- Use plain hyphens (`-`) in website copy, including metadata and accessible labels. Do not use em or en dashes.
 - Keep code identifiers and technical documentation in English.
 - Structure content so an English locale can be added later, but do not implement the English storefront in the MVP.
 - Customers check out as guests. Do not add customer registration, login, profiles, or saved addresses.
@@ -23,7 +24,7 @@ Build a small, trustworthy Polish e-commerce website for handmade silicone cake 
 The primary navigation should remain small:
 
 - `Strona główna`
-- `Sklep`
+- `Formy` (route `/sklep`)
 - `Zestawy`
 - `O nas`
 - `FAQ`
