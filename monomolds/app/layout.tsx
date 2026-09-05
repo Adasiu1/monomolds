@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | Mono Molds",
   },
   description:
-    "Ręcznie wykonywane formy silikonowe dla cukierników i domowych pasjonatów wypieków.",
+    "Ręcznie wykonywane formy silikonowe dla cukierników i domowych pasjonatów deserów.",
 };
 
 export default function RootLayout({

@@ -52,7 +52,7 @@ export function SiteFooter() {
             <FooterLogo />
             <p className="mt-5 max-w-md text-sm leading-6 text-[var(--muted)]">
               Ręcznie wykonywane formy silikonowe do powtarzalnych,
-              dopracowanych wypieków.
+              dopracowanych deserów.
             </p>
             <Link href="/kontakt" className="footer-contact-link">
               Napisz do nas

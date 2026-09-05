@@ -128,7 +128,7 @@ export function HeroMonkey() {
     <div className="hero-monkey" data-active={active} style={{ width: "100%", minWidth: 0 }}>
       <div ref={mountRef} className="hero-monkey-canvas" data-ready={status === "ready"} inert={status !== "ready"} aria-hidden={status !== "ready"} style={{ width: "100%", height: "clamp(360px, 62vw, 680px)" }} />
       <div className="hero-monkey-controls" style={{ textAlign: "center", minHeight: 76 }}>
-        <p role="status" className="text-xs text-[var(--muted)]">
+        <p role="status" className="hero-monkey-status text-xs text-[var(--muted)]" data-loading={status === "loading"}>
           {status === "loading" ? "Ładowanie modelu 3D…" : status === "error" ? "Nie udało się wczytać modelu 3D." : active ? "Przeciągnij, aby obrócić. Kliknij ponownie lub poza modelem, aby zresetować." : "Kliknij małpkę, aby włączyć obracanie."}
         </p>
         {status === "ready" ? <button type="button" className="footer-link" aria-pressed={active} onClick={(event) => toggleRef.current?.(event.detail === 0)}>{active ? "Zresetuj widok" : "Włącz obracanie"}</button> : null}

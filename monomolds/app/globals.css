@@ -368,7 +368,7 @@ input {
 @media (prefers-reduced-motion: reduce) {
   .hero-monkey-canvas[data-ready="true"] { transition-duration: 100ms !important; }
 }
-.hero-monkey model-viewer { display: block; width: 100%; height: 100%; background: transparent; border: 0; --poster-color: transparent; cursor: pointer; }
+.hero-monkey model-viewer { display: block; width: 100%; height: 100%; background: transparent; border: 0; --poster-color: transparent; --progress-bar-height: 0px; cursor: pointer; }
 .hero-monkey[data-active="true"] model-viewer { cursor: grab; }
 .hero-monkey[data-active="true"] model-viewer:active { cursor: grabbing; }
 .hero-monkey-controls { min-height: 76px; text-align: center; line-height: 1.6; max-width: 32rem; margin-inline: auto; }
@@ -392,7 +392,6 @@ input {
 .section-heading > p { max-width: 38ch; color: var(--muted); line-height: 1.7; font-size: 0.875rem; }
 .product-preview-grid { display: grid; gap: 2rem; }
 .collection-placeholder { min-width: 0; }
-.collection-placeholder-media { aspect-ratio: 3 / 2; display: grid; place-items: center; border-radius: 16px; background: var(--surface); color: var(--muted); border: 1px dashed #53514b; font-size: 0.875rem; }
 .collection-placeholder h3 { margin-top: 1rem; font-size: 1.125rem; }
 .collection-placeholder p { margin-top: 0.5rem; color: var(--muted); font-size: 0.875rem; line-height: 1.6; }
 .primary-button:active:not(:focus-visible), .media-controls button:active:not(:focus-visible) { transform: scale(0.97); }
