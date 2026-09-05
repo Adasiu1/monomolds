@@ -37,3 +37,6 @@ next-env.d.ts
 
 # Large local-only 3D test asset. Keep it on the developer machine, not in Git.
 /monomolds/public/Monkey.glb
+
+# Temporary Jira/Confluence handoff note. Keep the local copy out of Git.
+/monomolds/docs/kan-14-confluence.md
