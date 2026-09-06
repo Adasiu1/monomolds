@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 
+import { PageTransitionLink } from "@/components/page-transition";
 import { LinkButton } from "@/components/ui/button";
 import { HeroMonkey } from "@/components/hero-monkey";
 
@@ -61,7 +61,10 @@ export default function HomePage() {
         </div>
         <div className="product-preview-grid">
           <article className="collection-placeholder">
-            <Link href="/sklep" className="home-category-link">
+            <PageTransitionLink
+              href="/sklep"
+              className="home-category-link"
+            >
               <div className="collection-placeholder-media">
                 <Image
                   src="/images/packaging-main-page.png"
@@ -74,10 +77,10 @@ export default function HomePage() {
               <h3>Formy silikonowe</h3>
               <p>Zobacz pojedyncze formy i wybierz kształt do swojego kolejnego deseru.</p>
               <span className="home-category-action">Przejdź do form <span aria-hidden="true">→</span></span>
-            </Link>
+            </PageTransitionLink>
           </article>
           <article className="collection-placeholder">
-            <Link href="/zestawy" className="home-category-link">
+            <PageTransitionLink href="/zestawy" className="home-category-link">
               <div className="collection-placeholder-media">
                 <Image
                   src="/images/halloween-set.png"
@@ -90,7 +93,7 @@ export default function HomePage() {
               <h3>Zestawy form</h3>
               <p>Poznaj zestawy kilku form przygotowane do tworzenia spójnych kolekcji deserów.</p>
               <span className="home-category-action">Przejdź do zestawów <span aria-hidden="true">→</span></span>
-            </Link>
+            </PageTransitionLink>
           </article>
         </div>
       </section>

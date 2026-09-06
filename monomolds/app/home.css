@@ -27,8 +27,11 @@
 
 .home-products .collection-placeholder-media {
   position: relative;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
 }
 
 .home-category-image {

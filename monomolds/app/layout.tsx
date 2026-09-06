@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PageTransitionController } from "@/components/page-transition";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -29,6 +30,7 @@ export default function RootLayout({
         {/* Every page shares this header and footer. Only the main content changes. */}
         {/* Header and footer are shared by every route. The page content sits between them. */}
         <SiteHeader />
+        <PageTransitionController />
         <main id="main-content" className="flex-1">
           {children}
         </main>
