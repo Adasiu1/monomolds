@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { FooterLogo } from "./footer-logo";
+import { PageTransitionLink } from "./page-transition";
 
 // Each list becomes a footer column. Add future links to the matching group.
 const shopLinks = [
@@ -34,9 +33,12 @@ function FooterLinkList({ items }: FooterLinkListProps) {
     <ul className="mt-4 space-y-2.5">
       {items.map((item) => (
         <li key={item.href}>
-          <Link href={item.href} className="footer-link">
+          <PageTransitionLink
+            href={item.href}
+            className="footer-link"
+          >
             {item.label}
-          </Link>
+          </PageTransitionLink>
         </li>
       ))}
     </ul>
@@ -54,10 +56,10 @@ export function SiteFooter() {
               Ręcznie wykonywane formy silikonowe do powtarzalnych,
               dopracowanych deserów.
             </p>
-            <Link href="/kontakt" className="footer-contact-link">
+            <PageTransitionLink href="/kontakt" className="footer-contact-link">
               Napisz do nas
               <span aria-hidden="true">↗</span>
-            </Link>
+            </PageTransitionLink>
           </div>
 
           <div className="lg:col-span-2">

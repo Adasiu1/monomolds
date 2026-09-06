@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { BrandLogo } from "./brand-logo";
+import { PageTransitionLink } from "./page-transition";
 
 type NavigationItem = {
   href: string;
@@ -136,14 +136,14 @@ export function MobileNavigation({ items }: MobileNavigationProps) {
               <ul className="divide-y divide-[var(--border)]">
                 {items.filter((item) => item.href === "/sklep" || item.href === "/zestawy").map((item) => (
                   <li key={item.href}>
-                    <Link
+                    <PageTransitionLink
                       href={item.href}
                       className="mobile-nav-link"
                       onClick={() => setIsOpen(false)}
                     >
                       {item.label}
                       <span aria-hidden="true">→</span>
-                    </Link>
+                    </PageTransitionLink>
                   </li>
                 ))}
               </ul>
@@ -156,9 +156,9 @@ export function MobileNavigation({ items }: MobileNavigationProps) {
                 { href: "/regulamin", label: "Regulamin sklepu" },
                 { href: "/polityka-prywatnosci", label: "Polityka prywatności" },
               ].map((item) => (
-                <Link key={item.href} href={item.href} className="footer-link" onClick={() => setIsOpen(false)}>
+                <PageTransitionLink key={item.href} href={item.href} className="footer-link" onClick={() => setIsOpen(false)}>
                   {item.label}
-                </Link>
+                </PageTransitionLink>
               ))}
             </nav>
 

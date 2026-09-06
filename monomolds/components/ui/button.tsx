@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ComponentProps, ComponentPropsWithRef } from "react";
 
+import { PageTransitionLink } from "../page-transition";
+
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 export function buttonClasses(variant: Variant = "primary", className = "") {
@@ -27,7 +29,7 @@ export function Button({ variant, loading = false, loadingLabel = "Proszę czeka
 // Use a link to open a page. Use Button for actions that can be disabled.
 /** Styled navigation link. Use Button for actions that can be disabled. */
 export function LinkButton({ variant, className, ...props }: ComponentProps<typeof Link> & { variant?: Variant }) {
-  return <Link {...props} className={buttonClasses(variant, className)} />;
+  return <PageTransitionLink {...props} className={buttonClasses(variant, className)} />;
 }
 
 /** Icon-only button. The label is required for screen readers. */

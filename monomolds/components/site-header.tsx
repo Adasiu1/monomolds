@@ -1,7 +1,6 @@
-import Link from "next/link";
-
 import { BrandLogo } from "./brand-logo";
 import { MobileNavigation } from "./mobile-navigation";
+import { PageTransitionLink } from "./page-transition";
 import { LinkButton } from "./ui/button";
 
 // The mobile menu uses this full list. Desktop shows only Formy and Zestawy here.
@@ -54,22 +53,25 @@ export function SiteHeader() {
       <div className="site-container flex h-[4.75rem] items-center gap-4 lg:h-[5.25rem]">
         <div className="flex flex-1 items-center lg:flex-none">
           <MobileNavigation items={navigationItems} />
-          <Link
+          <PageTransitionLink
             href="/"
             className="ml-3 inline-flex items-center lg:ml-0"
             aria-label="Mono Molds - strona główna"
           >
             <BrandLogo />
-          </Link>
+          </PageTransitionLink>
         </div>
 
         <nav aria-label="Nawigacja główna" className="hidden flex-1 lg:block">
           <ul className="flex items-center justify-center gap-1">
             {navigationItems.slice(1, 3).map((item) => (
               <li key={item.href}>
-                <Link href={item.href} className="desktop-nav-link">
+                <PageTransitionLink
+                  href={item.href}
+                  className="desktop-nav-link"
+                >
                   {item.label}
-                </Link>
+                </PageTransitionLink>
               </li>
             ))}
           </ul>
@@ -97,7 +99,7 @@ export function SiteHeader() {
             </div>
           </form>
 
-          <Link
+          <PageTransitionLink
             href="/koszyk"
             className="cart-link"
             aria-label="Koszyk, 0 produktów"
@@ -107,7 +109,7 @@ export function SiteHeader() {
             <span className="cart-count" aria-hidden="true">
               0
             </span>
-          </Link>
+          </PageTransitionLink>
         </div>
       </div>
     </header>

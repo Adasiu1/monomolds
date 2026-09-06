@@ -1,5 +1,6 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { PageTransitionLink } from "../page-transition";
 import { Price, type PriceProps } from "./price";
 import { ProductImage } from "./product-image";
 
@@ -16,10 +17,10 @@ export type ProductCardData = PriceProps & {
 /** Presentation-only card. The parent owns data fetching, cart actions and inventory rules. */
 export function ProductCard({ product, action }: { product: ProductCardData; action?: ReactNode }) {
   return <article className="ui-product-card">
-    <Link href={product.href} className="ui-product-link">
+    <PageTransitionLink href={product.href} className="ui-product-link">
       <div className="ui-product-media"><ProductImage src={product.image?.src} alt={product.image?.alt ?? product.name} /></div>
       <h3>{product.name}</h3>
-    </Link>
+    </PageTransitionLink>
     {product.description ? <p className="ui-muted">{product.description}</p> : null}
     <Price amountGrosze={product.amountGrosze} originalAmountGrosze={product.originalAmountGrosze} lowest30DaysGrosze={product.lowest30DaysGrosze} />
     <p className="ui-availability">{product.available ? "Dostępna" : "Chwilowo niedostępna"}</p>
