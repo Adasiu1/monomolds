@@ -5,9 +5,9 @@ const nextConfig: NextConfig = {
 
   images: {
     remotePatterns: [
-      // Tutaj później dodasz domenę R2/CDN
-      // z którego będą serwowane zdjęcia foremek
-      // np. pub-xyz.r2.dev albo własna domena CDN
+      { protocol: "https", hostname: "**.supabase.co", pathname: "/storage/v1/object/sign/**" },
+      { protocol: "http", hostname: "localhost", port: "54321", pathname: "/storage/v1/object/sign/**" },
+      { protocol: "http", hostname: "127.0.0.1", port: "54321", pathname: "/storage/v1/object/sign/**" },
     ],
   },
 };

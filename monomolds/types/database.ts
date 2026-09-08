@@ -144,6 +144,41 @@ export type Database = {
           },
         ]
       }
+      product_images: {
+        Row: {
+          alt_text: string
+          created_at: string
+          id: string
+          position: number
+          product_id: string
+          storage_path: string
+        }
+        Insert: {
+          alt_text: string
+          created_at?: string
+          id?: string
+          position?: number
+          product_id: string
+          storage_path: string
+        }
+        Update: {
+          alt_text?: string
+          created_at?: string
+          id?: string
+          position?: number
+          product_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           bundle_product_id: string | null
@@ -348,4 +383,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
