@@ -2,6 +2,8 @@
 .branches
 .temp
 migrations/
+seed.sql
+
 
 # dotenvx
 .env.keys
