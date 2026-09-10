@@ -65,43 +65,125 @@ export type Database = {
         Row: {
           created_at: string
           currency: string
+          delivery_method: string | null
           discount_code: string | null
           discount_total: number
           email: string
+          guest_token: string
           id: string
           items: Json
+          lead_time_notice_version: string | null
+          parcel_size: string | null
+          pricing_policy_version: string | null
+          quote_id: string | null
           shipping_address: Json
+          shipping_rule_version: string | null
+          shipping_total: number
           status: string
           subtotal: number
           total: number
+          updated_at: string
         }
         Insert: {
           created_at?: string
           currency?: string
+          delivery_method?: string | null
           discount_code?: string | null
           discount_total?: number
           email: string
+          guest_token?: string
           id?: string
           items?: Json
+          lead_time_notice_version?: string | null
+          parcel_size?: string | null
+          pricing_policy_version?: string | null
+          quote_id?: string | null
           shipping_address: Json
+          shipping_rule_version?: string | null
+          shipping_total?: number
           status?: string
           subtotal: number
           total: number
+          updated_at?: string
         }
         Update: {
           created_at?: string
           currency?: string
+          delivery_method?: string | null
           discount_code?: string | null
           discount_total?: number
           email?: string
+          guest_token?: string
           id?: string
           items?: Json
+          lead_time_notice_version?: string | null
+          parcel_size?: string | null
+          pricing_policy_version?: string | null
+          quote_id?: string | null
           shipping_address?: Json
+          shipping_rule_version?: string | null
+          shipping_total?: number
           status?: string
           subtotal?: number
           total?: number
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: true
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_attempts: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          expires_at: string
+          id: string
+          order_id: string
+          provider: string
+          provider_session_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          order_id: string
+          provider?: string
+          provider_session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          order_id?: string
+          provider?: string
+          provider_session_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_attempts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_events: {
         Row: {
@@ -110,6 +192,7 @@ export type Database = {
           id: string
           order_id: string
           payload: Json | null
+          payment_attempt_id: string | null
           provider: string
           provider_event_id: string
           status: string
@@ -120,6 +203,7 @@ export type Database = {
           id?: string
           order_id: string
           payload?: Json | null
+          payment_attempt_id?: string | null
           provider: string
           provider_event_id: string
           status: string
@@ -130,6 +214,7 @@ export type Database = {
           id?: string
           order_id?: string
           payload?: Json | null
+          payment_attempt_id?: string | null
           provider?: string
           provider_event_id?: string
           status?: string
@@ -140,6 +225,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_events_payment_attempt_id_fkey"
+            columns: ["payment_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "payment_attempts"
             referencedColumns: ["id"]
           },
         ]
@@ -242,6 +334,139 @@ export type Database = {
           },
         ]
       }
+      quotes: {
+        Row: {
+          adjustments: Json
+          created_at: string
+          currency: string
+          delivery_method: string
+          discount_total: number
+          id: string
+          items: Json
+          lead_time_notice: string | null
+          lead_time_notice_version: string | null
+          parcel_size: string | null
+          physical_item_count: number
+          pricing_policy_version: string
+          requires_lead_time_confirmation: boolean
+          shipping_rule_version: string
+          shipping_total: number
+          subtotal: number
+          total: number
+        }
+        Insert: {
+          adjustments?: Json
+          created_at?: string
+          currency?: string
+          delivery_method: string
+          discount_total?: number
+          id?: string
+          items: Json
+          lead_time_notice?: string | null
+          lead_time_notice_version?: string | null
+          parcel_size?: string | null
+          physical_item_count: number
+          pricing_policy_version: string
+          requires_lead_time_confirmation?: boolean
+          shipping_rule_version: string
+          shipping_total: number
+          subtotal: number
+          total: number
+        }
+        Update: {
+          adjustments?: Json
+          created_at?: string
+          currency?: string
+          delivery_method?: string
+          discount_total?: number
+          id?: string
+          items?: Json
+          lead_time_notice?: string | null
+          lead_time_notice_version?: string | null
+          parcel_size?: string | null
+          physical_item_count?: number
+          pricing_policy_version?: string
+          requires_lead_time_confirmation?: boolean
+          shipping_rule_version?: string
+          shipping_total?: number
+          subtotal?: number
+          total?: number
+        }
+        Relationships: []
+      }
+      refunds: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          items: Json
+          order_id: string
+          payment_attempt_id: string
+          processed_at: string | null
+          product_amount: number
+          provider_refund_id: string | null
+          reason: string
+          return_shipping_paid_by: string
+          shipping_amount: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          items?: Json
+          order_id: string
+          payment_attempt_id: string
+          processed_at?: string | null
+          product_amount: number
+          provider_refund_id?: string | null
+          reason: string
+          return_shipping_paid_by: string
+          shipping_amount?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          items?: Json
+          order_id?: string
+          payment_attempt_id?: string
+          processed_at?: string | null
+          product_amount?: number
+          provider_refund_id?: string | null
+          reason?: string
+          return_shipping_paid_by?: string
+          shipping_amount?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_attempt_id_fkey"
+            columns: ["payment_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "payment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_payment_attempt_order_fkey"
+            columns: ["payment_attempt_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "payment_attempts"
+            referencedColumns: ["id", "order_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -266,12 +491,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -295,11 +520,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -320,11 +545,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -345,11 +570,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -362,11 +587,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

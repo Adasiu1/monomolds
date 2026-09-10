@@ -92,7 +92,8 @@ function toItem(product: ProductRow, image: CatalogueImage | null): CatalogueIte
     description: product.description,
     priceGrosze: product.price,
     currency: "PLN",
-    available: product.stock_quantity > 0,
+    // Published moulds remain orderable at zero stock because they are made to order.
+    available: true,
     image,
   };
 }
@@ -137,7 +138,7 @@ export async function getPublishedCatalogueItem(slug: string, kind: CatalogueIte
   const item = toItem(product, image);
   const variants: CatalogueVariant[] = (product.variants ?? [])
     .filter((variant) => variant.type === "variant" && variant.status === "published" && variant.price !== null)
-    .map((variant) => ({ id: variant.id, name: variant.name, priceGrosze: variant.price!, available: variant.stock_quantity > 0 }));
+    .map((variant) => ({ id: variant.id, name: variant.name, priceGrosze: variant.price!, available: true }));
   const bundleItems: CatalogueBundleItem[] = (product.bundle_items ?? [])
     .filter((bundleItem) => bundleItem.type === "bundle_item" && bundleItem.status === "published")
     .map((bundleItem) => ({ id: bundleItem.id, name: bundleItem.name }));

@@ -40,4 +40,5 @@ next-env.d.ts
 
 # Temporary Jira/Confluence handoff note. Keep the local copy out of Git.
 /monomolds/docs/kan-14-confluence.md
+/monomolds/docs/kan-12-contracts.md
 
