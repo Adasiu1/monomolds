@@ -30,11 +30,21 @@ type ProductWithRelations = ProductWithImages & {
 };
 
 function getClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!url || !key) {
+  if (!configuredUrl || !key) {
     console.error("Catalogue configuration is missing required Supabase public environment variables.");
+    throw new CatalogueRepositoryError();
+  }
+
+  let url: string;
+  try {
+    const parsedUrl = new URL(configuredUrl);
+    parsedUrl.pathname = parsedUrl.pathname.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
+    url = parsedUrl.toString().replace(/\/$/, "");
+  } catch {
+    console.error("Catalogue configuration contains an invalid Supabase URL.");
     throw new CatalogueRepositoryError();
   }
 
@@ -79,7 +89,12 @@ async function makeImages(rows: ProductWithImages[]): Promise<Map<string, Catalo
 }
 
 function toItem(product: ProductRow, image: CatalogueImage | null): CatalogueItem {
-  if (!product.slug || product.price === null || (product.type !== "product" && product.type !== "bundle")) {
+  if (
+    !product.slug ||
+    product.price === null ||
+    product.currency !== "PLN" ||
+    (product.type !== "product" && product.type !== "bundle")
+  ) {
     console.error("Catalogue contained an invalid published record.", { productId: product.id });
     throw new CatalogueRepositoryError();
   }
@@ -91,7 +106,7 @@ function toItem(product: ProductRow, image: CatalogueImage | null): CatalogueIte
     name: product.name,
     description: product.description,
     priceGrosze: product.price,
-    currency: "PLN",
+    currency: product.currency,
     // Published moulds remain orderable at zero stock because they are made to order.
     available: true,
     image,
