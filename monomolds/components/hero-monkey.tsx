@@ -5,6 +5,11 @@ import type { ModelViewerElement } from "@google/model-viewer";
 
 // Starting camera view: sideways angle, vertical angle and distance from the model.
 const DEFAULT_ORBIT = "65deg 75deg 100%";
+const DEFAULT_SUPABASE_URL = "https://sviceapzwbnqfdpznvtn.supabase.co";
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? DEFAULT_SUPABASE_URL)
+  .replace(/\/rest\/v1\/?$/, "")
+  .replace(/\/+$/, "");
+const MONKEY_MODEL_URL = `${SUPABASE_URL}/storage/v1/object/public/product-models/products/monkey/monkey.glb`;
 
 export function HeroMonkey() {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -21,12 +26,15 @@ export function HeroMonkey() {
     let enabled = false;
     let start: { x: number; y: number; id: number } | undefined;
     let dragged = false;
+    let capturedTouch = false;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     // Return by the shortest turn, even after the visitor spins the model several times.
     const reset = (instant = false) => {
       if (!viewer || !enabled) return;
       enabled = false;
+      capturedTouch = false;
       viewer.cameraControls = false;
+      viewer.touchAction = "pan-y";
       const currentDegrees = viewer.getCameraOrbit().theta * 180 / Math.PI;
       const nearestDefault = 65 + 360 * Math.round((currentDegrees - 65) / 360);
       viewer.interpolationDecay = 120;
@@ -55,6 +63,21 @@ export function HeroMonkey() {
     const move = (event: PointerEvent) => {
       if (start && event.pointerId === start.id && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) dragged = true;
     };
+    const touchStarted = (event: TouchEvent) => {
+      if (!viewer || !enabled || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      if (!viewer.positionAndNormalFromPoint(touch.clientX, touch.clientY)) return;
+      capturedTouch = true;
+      viewer.touchAction = "none";
+    };
+    const touchMoved = (event: TouchEvent) => {
+      if (capturedTouch) event.preventDefault();
+    };
+    const touchEnded = () => {
+      if (!viewer || !capturedTouch) return;
+      capturedTouch = false;
+      viewer.touchAction = "pan-y";
+    };
     const click = (event: MouseEvent) => {
       if (!viewer || !viewer.loaded) return;
       if (event.composedPath().includes(viewer)) {
@@ -82,19 +105,25 @@ export function HeroMonkey() {
         // Size the custom element explicitly as well as in CSS. Its native
         // 300 x 150 fallback otherwise makes the model look like a thumbnail.
         Object.assign(viewer.style, { display: "block", width: "100%", height: "100%", background: "transparent", border: "0", userSelect: "none" });
-        viewer.src = "/Monkey.glb";
+        viewer.src = MONKEY_MODEL_URL;
         viewer.alt = "Model 3D małpki. Włącz obracanie przyciskiem poniżej, a następnie przeciągnij model lub użyj strzałek.";
         viewer.cameraOrbit = DEFAULT_ORBIT;
         viewer.interactionPrompt = "none";
         viewer.disableZoom = true;
         viewer.disablePan = true;
         viewer.disableTap = true;
+        // The page keeps vertical scrolling until an active touch starts on the
+        // rendered model itself. Empty canvas space never becomes a scroll trap.
         viewer.touchAction = "pan-y";
         viewer.setAttribute("loading", "eager");
         viewer.setAttribute("shadow-intensity", "0");
         viewer.addEventListener("load", loaded);
         viewer.addEventListener("error", failed);
         viewer.addEventListener("pointerdown", down, true);
+        viewer.addEventListener("touchstart", touchStarted, { passive: true });
+        viewer.addEventListener("touchmove", touchMoved, { passive: false });
+        viewer.addEventListener("touchend", touchEnded);
+        viewer.addEventListener("touchcancel", touchEnded);
         mount.append(viewer);
         toggleRef.current = toggle;
         document.addEventListener("pointermove", move, true);
@@ -120,6 +149,10 @@ export function HeroMonkey() {
       viewer?.removeEventListener("load", loaded);
       viewer?.removeEventListener("error", failed);
       viewer?.removeEventListener("pointerdown", down, true);
+      viewer?.removeEventListener("touchstart", touchStarted);
+      viewer?.removeEventListener("touchmove", touchMoved);
+      viewer?.removeEventListener("touchend", touchEnded);
+      viewer?.removeEventListener("touchcancel", touchEnded);
       viewer?.remove();
     };
   }, [attempt]);
