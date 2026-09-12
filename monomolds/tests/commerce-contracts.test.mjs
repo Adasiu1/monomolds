@@ -52,6 +52,7 @@ test("fixture implements quote and checkout success contracts", async () => {
     quoteId: quoteResult.data.quote.id,
     customer: { email: "anna@example.test", firstName: "Anna", lastName: "Nowak", phone: "+48123123123" },
     delivery: { method: "inpost_locker", pointId: "POZ01A" },
+    acceptedTerms: true,
   });
 
   assert.equal(checkoutResult.ok, true);
@@ -90,6 +91,7 @@ test("rejects delivery details that do not match the quote", async () => {
       method: "courier",
       address: { line1: "Prosta 1", postalCode: "00-001", city: "Warszawa", countryCode: "PL" },
     },
+    acceptedTerms: true,
   });
 
   assert.equal(result.ok, false);
@@ -136,6 +138,7 @@ test("makes checkout idempotent while its payment attempt is active", async () =
     quoteId: quoteResult.data.quote.id,
     customer: { email: "anna@example.test", firstName: "Anna", lastName: "Nowak", phone: "+48123123123" },
     delivery: { method: "inpost_locker", pointId: "POZ01A" },
+    acceptedTerms: true,
   };
   const first = await repository.checkout(input);
   const second = await repository.checkout(input);
@@ -155,6 +158,7 @@ test("collects all checkout field errors", async () => {
     quoteId: "missing",
     customer: { email: "bad", firstName: "", lastName: "", phone: "1" },
     delivery: { method: "inpost_locker", pointId: "" },
+    acceptedTerms: false,
   });
 
   assert.equal(result.ok, false);
@@ -166,6 +170,7 @@ test("collects all checkout field errors", async () => {
     "customer.lastName",
     "customer.phone",
     "delivery.pointId",
+    "acceptedTerms",
   ]);
 });
 
@@ -183,6 +188,7 @@ test("re-prices and creates a new payment attempt after 15 minutes", async () =>
     quoteId: quoteResult.data.quote.id,
     customer: { email: "anna@example.test", firstName: "Anna", lastName: "Nowak", phone: "+48123123123" },
     delivery: { method: "inpost_locker", pointId: "POZ01A" },
+    acceptedTerms: true,
   });
   assert.equal(checkout.ok, true);
   if (!checkout.ok) return;
@@ -213,6 +219,7 @@ test("fixture returns the agreed checkout error shape", async () => {
     quoteId: "missing",
     customer: { email: "anna@example.test", firstName: "Anna", lastName: "Nowak", phone: "+48123123123" },
     delivery: { method: "inpost_locker", pointId: "POZ01A" },
+    acceptedTerms: true,
   });
 
   assert.deepEqual(result, {
