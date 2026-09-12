@@ -1,0 +1,24 @@
+.checkout-page { padding-block: clamp(2.5rem, 6vw, 5rem); }
+.checkout-layout { display: grid; align-items: start; gap: 2.5rem; }
+.checkout-form { display: grid; gap: 2rem; max-width: 45rem; }
+.checkout-heading h1 { margin-top: .9rem; font-size: clamp(2.25rem, 5vw, 4rem); letter-spacing: -.04em; line-height: 1.1; }
+.checkout-heading p:last-child { max-width: 42rem; margin-top: 1rem; color: var(--muted); line-height: 1.7; }
+.checkout-section { display: grid; gap: 1.15rem; margin: 0; padding: 0; border: 0; min-width: 0; }
+.checkout-section > legend { margin-bottom: .25rem; font-size: 1.25rem; font-weight: 600; }
+.checkout-field-grid { display: grid; gap: 1.15rem; }
+.checkout-delivery-options { display: grid; gap: .75rem; }
+.checkout-delivery-option { display: flex; align-items: center; gap: .8rem; min-height: 4.5rem; padding: .85rem 1rem; border: 1px solid #676b63; border-radius: .65rem; background: var(--surface); cursor: pointer; }
+.checkout-delivery-option:has(input:checked) { border-color: var(--accent); }
+.checkout-delivery-option input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+.checkout-delivery-option span { display: flex; flex: 1; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.checkout-delivery-option small { color: var(--muted); font-size: .9rem; }
+.checkout-summary { padding: 1.5rem; border: 1px solid var(--border); border-radius: .85rem; background: var(--surface); }
+.checkout-summary h2 { font-size: 1.25rem; font-weight: 600; }
+.checkout-summary-items { display: grid; gap: .9rem; margin: 1.5rem 0; padding: 0 0 1.5rem; border-bottom: 1px solid var(--border); list-style: none; }
+.checkout-summary-items li, .checkout-summary dl > div { display: flex; justify-content: space-between; gap: 1rem; font-variant-numeric: tabular-nums; }
+.checkout-summary-items small { color: var(--muted); }
+.checkout-summary dl { display: grid; gap: .85rem; }
+.checkout-summary dd { margin: 0; text-align: right; }
+.checkout-total { margin-top: .5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 1.15rem; font-weight: 700; }
+@media (min-width: 640px) { .checkout-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .checkout-layout { grid-template-columns: minmax(0, 1.35fr) minmax(19rem, .65fr); gap: clamp(3rem, 7vw, 8rem); } .checkout-summary { position: sticky; top: 2rem; } }

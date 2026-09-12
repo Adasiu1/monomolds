@@ -9,7 +9,7 @@ const sections: Record<string, { title: string; description: string }> = {
   "o-nas": { title: "O nas", description: "Przygotowujemy opowieść o MonoMolds i naszej pracowni ręcznie wykonywanych form silikonowych." },
   faq: { title: "FAQ", description: "Tutaj pojawią się odpowiedzi na pytania o formy, ich użytkowanie i zamówienia." },
   kontakt: { title: "Kontakt", description: "Strona kontaktowa jest w przygotowaniu. Na razie możesz odwiedzić nasz profil na Instagramie przez link w stopce." },
-  koszyk: { title: "Koszyk", description: "Koszyk i składanie zamówień nie są jeszcze dostępne. Obecnie możesz obejrzeć stronę główną i zapowiedź kolekcji." },
+  koszyk: { title: "Koszyk", description: "Sprawdź podsumowanie koszyka i podaj dane potrzebne do dostawy. Zakup złożysz bez rejestracji." },
   "dostawa-i-zwroty": { title: "Dostawa i zwroty", description: "Informacje o dostawie i zwrotach czekają na zatwierdzenie. Nie publikujemy jeszcze stawek ani warunków." },
   regulamin: { title: "Regulamin sklepu", description: "Regulamin jest w przygotowaniu i wymaga zatwierdzenia przed uruchomieniem sprzedaży. Ta strona nie zawiera obowiązujących warunków zakupów." },
   "polityka-prywatnosci": { title: "Polityka prywatności", description: "Dokument jest w przygotowaniu i wymaga zatwierdzenia przed uruchomieniem funkcji zbierających dane." },
@@ -27,6 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ section: 
 }
 
 export default async function PendingPage({ params }: { params: Promise<{ section: string }> }) {
-  const section = getSection((await params).section);
-  return <div className="site-container ui-page-shell"><p className="eyebrow">MonoMolds</p><h1>{section.title}</h1><Notice title="Strona w przygotowaniu" announce={false}>{section.description}</Notice><LinkButton href="/">Wróć na stronę główną <span aria-hidden="true" className="ui-arrow">→</span></LinkButton></div>;
+  const key = (await params).section;
+  const section = getSection(key);
+  const isCart = key === "koszyk";
+  return <div className="site-container ui-page-shell"><p className="eyebrow">MonoMolds</p><h1>{section.title}</h1><Notice title={isCart ? "Gotowe do zamówienia" : "Strona w przygotowaniu"} announce={false}>{section.description}</Notice><LinkButton href={isCart ? "/zamowienie" : "/"}>{isCart ? "Przejdź do zamówienia" : <>Wróć na stronę główną <span aria-hidden="true" className="ui-arrow">→</span></>}</LinkButton></div>;
 }

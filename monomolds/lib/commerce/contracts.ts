@@ -242,6 +242,8 @@ export type CheckoutInput = {
   quoteId: string;
   customer: CustomerDetails;
   delivery: CheckoutDelivery;
+  /** Required acknowledgement of the store terms immediately before payment. */
+  acceptedTerms: boolean;
   acceptedLeadTimeNoticeVersion?: string;
 };
 

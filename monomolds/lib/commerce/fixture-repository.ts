@@ -42,27 +42,27 @@ const STANDARD_SHIPPING_GROSZE = 1599;
 
 const FIXTURE_CATALOGUE: Record<string, FixtureMerchandise> = {
   "variant-heart": {
-    name: "Heart",
+    name: "Serce",
     kind: "product",
-    components: [{ merchandiseId: "variant-heart", name: "Heart", priceGrosze: 4500, quantity: 1 }],
+    components: [{ merchandiseId: "variant-heart", name: "Serce", priceGrosze: 4500, quantity: 1 }],
   },
   "variant-star": {
-    name: "Star",
+    name: "Gwiazda",
     kind: "product",
-    components: [{ merchandiseId: "variant-star", name: "Star", priceGrosze: 4000, quantity: 1 }],
+    components: [{ merchandiseId: "variant-star", name: "Gwiazda", priceGrosze: 4000, quantity: 1 }],
   },
   "bundle-four": {
     name: "Zestaw 4 foremek",
     kind: "bundle",
     components: [
-      { merchandiseId: "variant-heart", name: "Heart", priceGrosze: 4500, quantity: 1 },
-      { merchandiseId: "variant-star", name: "Star", priceGrosze: 4000, quantity: 1 },
-      { merchandiseId: "variant-moon", name: "Moon", priceGrosze: 4200, quantity: 1 },
-      { merchandiseId: "variant-flower", name: "Flower", priceGrosze: 4300, quantity: 1 },
+      { merchandiseId: "variant-heart", name: "Serce", priceGrosze: 4500, quantity: 1 },
+      { merchandiseId: "variant-star", name: "Gwiazda", priceGrosze: 4000, quantity: 1 },
+      { merchandiseId: "variant-moon", name: "Księżyc", priceGrosze: 4200, quantity: 1 },
+      { merchandiseId: "variant-flower", name: "Kwiat", priceGrosze: 4300, quantity: 1 },
     ],
   },
   "variant-monkey-6": {
-    name: "Monkey — zestaw 6 foremek",
+    name: "Monkey - zestaw 6 foremek",
     kind: "bundle",
     components: Array.from({ length: 6 }, (_, index) => ({
       merchandiseId: `variant-monkey-${index + 1}`,
@@ -197,12 +197,15 @@ function checkoutFieldErrors(input: CheckoutInput): ContractFieldErrors {
   if (!input.customer.firstName.trim()) errors["customer.firstName"] = ["Podaj imię."];
   if (!input.customer.lastName.trim()) errors["customer.lastName"] = ["Podaj nazwisko."];
   if (!/^\+?[0-9 ]{7,15}$/.test(input.customer.phone)) errors["customer.phone"] = ["Podaj prawidłowy numer telefonu."];
+  if (!input.acceptedTerms) errors.acceptedTerms = ["Akceptacja regulaminu jest wymagana."];
   if (input.delivery.method === "inpost_locker" && !input.delivery.pointId.trim()) {
     errors["delivery.pointId"] = ["Wybierz paczkomat."];
   }
   if (input.delivery.method === "courier") {
     if (!input.delivery.address.line1.trim()) errors["delivery.address.line1"] = ["Podaj adres."];
-    if (!input.delivery.address.postalCode.trim()) errors["delivery.address.postalCode"] = ["Podaj kod pocztowy."];
+    if (!/^\d{2}-\d{3}$/.test(input.delivery.address.postalCode)) {
+      errors["delivery.address.postalCode"] = ["Podaj kod pocztowy w formacie 00-000."];
+    }
     if (!input.delivery.address.city.trim()) errors["delivery.address.city"] = ["Podaj miejscowość."];
   }
   return errors;
