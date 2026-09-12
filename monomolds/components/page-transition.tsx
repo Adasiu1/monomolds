@@ -38,6 +38,14 @@ function setTransition(
   main.style.transform = transform;
 }
 
+function prepareEntrance(main: HTMLElement) {
+  main.style.transition = "none";
+  main.style.opacity = "0";
+  main.style.transform = "translateY(24px)";
+  main.style.willChange = "opacity, transform";
+  main.style.pointerEvents = "none";
+}
+
 function isPlainPointerClick(event: MouseEvent<HTMLAnchorElement>) {
   return (
     event.button === 0 &&
@@ -149,24 +157,45 @@ export function PageTransitionController() {
       return;
     }
 
-    main.style.transition = "none";
-    main.style.opacity = "0";
-    main.style.transform = "translateY(24px)";
-    main.style.willChange = "opacity, transform";
-    main.style.pointerEvents = "none";
+    const mainElement = main;
+    let frame: number | undefined;
+    let observer: MutationObserver | undefined;
 
-    const frame = window.requestAnimationFrame(() => {
-      main.dataset.pageTransition = "enter";
-      setTransition(main, ENTER_DURATION, "1", "translateY(0)");
-    });
-    enterTimer = window.setTimeout(() => {
-      delete main.dataset.pageTransition;
-      pendingDestination = null;
-      clearTransitionStyles(main);
-    }, ENTER_DURATION);
+    function enterResolvedPage() {
+      prepareEntrance(mainElement);
+      frame = window.requestAnimationFrame(() => {
+        mainElement.dataset.pageTransition = "enter";
+        setTransition(mainElement, ENTER_DURATION, "1", "translateY(0)");
+      });
+      enterTimer = window.setTimeout(() => {
+        delete mainElement.dataset.pageTransition;
+        pendingDestination = null;
+        clearTransitionStyles(mainElement);
+      }, ENTER_DURATION);
+    }
+
+    if (mainElement.querySelector(".ui-site-loading")) {
+      clearTransitionStyles(mainElement);
+      mainElement.dataset.pageTransition = "loading";
+
+      observer = new MutationObserver(() => {
+        if (mainElement.querySelector(".ui-site-loading")) {
+          return;
+        }
+
+        observer?.disconnect();
+        enterResolvedPage();
+      });
+      observer.observe(mainElement, { childList: true, subtree: true });
+    } else {
+      enterResolvedPage();
+    }
 
     return () => {
-      window.cancelAnimationFrame(frame);
+      if (frame !== undefined) {
+        window.cancelAnimationFrame(frame);
+      }
+      observer?.disconnect();
       window.clearTimeout(enterTimer);
     };
   }, [pathname]);

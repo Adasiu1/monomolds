@@ -1,12 +1,16 @@
-import { ProductCard } from "@/components/ui/product-card";
+import { connection } from "next/server";
+
+import { CatalogueCard } from "@/components/catalogue/catalogue-card";
+import { RetryButton } from "@/components/catalogue/retry-button";
+import { LinkButton } from "@/components/ui/button";
 import { EmptyState, Notice } from "@/components/ui/feedback";
 import { CatalogueRepositoryError, getPublishedCatalogue } from "@/lib/catalogue/repository";
 import type { CatalogueItem } from "@/lib/catalogue/types";
 
 export const metadata = { title: "Zestawy" };
-export const dynamic = "force-dynamic";
 
 export default async function BundlesPage() {
+  await connection();
   let bundles: CatalogueItem[] | null;
   try {
     bundles = await getPublishedCatalogue("bundle");
@@ -14,6 +18,58 @@ export default async function BundlesPage() {
     if (!(error instanceof CatalogueRepositoryError)) throw error;
     bundles = null;
   }
-  if (!bundles) return <div className="site-container py-12 sm:py-20"><p className="eyebrow">Zestawy</p><h1 className="mt-5 text-4xl font-medium tracking-tight sm:text-6xl">Katalog jest chwilowo niedostępny</h1><Notice tone="error" title="Nie udało się wczytać zestawów.">Odśwież stronę lub spróbuj ponownie za chwilę.</Notice></div>;
-  return <div className="site-container py-12 sm:py-20"><p className="eyebrow">Mono Molds</p><h1 className="mt-5 text-4xl font-medium tracking-tight sm:text-6xl">Zestawy</h1><p className="mt-6 max-w-xl leading-7 text-[var(--muted)]">Gotowe zestawy form, z jasno opisanym składem.</p>{bundles.length > 0 ? <div className="ui-product-grid">{bundles.map((bundle) => <ProductCard key={bundle.id} product={{ name: bundle.name, href: `/zestawy/${bundle.slug}`, description: bundle.description ?? undefined, amountGrosze: bundle.priceGrosze, available: bundle.available, image: bundle.image ? { src: bundle.image.url, alt: bundle.image.alt } : undefined }} />)}</div> : <EmptyState title="Nie ma jeszcze dostępnych zestawów">Wróć wkrótce - pracujemy nad kolekcją.</EmptyState>}</div>;
+  if (!bundles) return <CatalogueError />;
+
+  return (
+    <div className="site-container catalogue-page">
+      <header className="catalogue-header">
+        <p className="eyebrow">Gotowe komplety</p>
+        <h1>Zestawy</h1>
+        <p>Wybrane formy zebrane w jeden zestaw i opisane bez niedomówień.</p>
+      </header>
+
+      {bundles.length > 0 ? (
+        <section aria-labelledby="bundle-results-title">
+          <p id="bundle-results-title" className="catalogue-result-count">
+            {formatBundleCount(bundles.length)}
+          </p>
+          <ul className="ui-product-grid">
+            {bundles.map((bundle) => <li key={bundle.id}><CatalogueCard item={bundle} /></li>)}
+          </ul>
+        </section>
+      ) : (
+        <EmptyState
+          title="Nie ma jeszcze dostępnych zestawów"
+          action={<LinkButton href="/sklep" variant="secondary">Zobacz formy</LinkButton>}
+        >
+          Wróć wkrótce lub wybierz pojedyncze formy z katalogu.
+        </EmptyState>
+      )}
+    </div>
+  );
+}
+
+function formatBundleCount(count: number) {
+  if (count === 1) return "1 zestaw";
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+  if (lastDigit >= 2 && lastDigit <= 4 && !(lastTwoDigits >= 12 && lastTwoDigits <= 14)) {
+    return `${count} zestawy`;
+  }
+  return `${count} zestawów`;
+}
+
+function CatalogueError() {
+  return (
+    <div className="site-container catalogue-page">
+      <header className="catalogue-header">
+        <p className="eyebrow">Gotowe komplety</p>
+        <h1>Zestawy</h1>
+      </header>
+      <Notice tone="error" title="Nie udało się wczytać zestawów.">
+        <p>Spróbuj ponownie. Jeśli problem nie zniknie, wróć do nas za chwilę.</p>
+        <RetryButton />
+      </Notice>
+    </div>
+  );
 }

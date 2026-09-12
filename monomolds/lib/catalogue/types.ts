@@ -16,6 +16,13 @@ export type CatalogueBundleItem = {
   name: string;
 };
 
+export type CatalogueTheme = {
+  slug: string;
+  name: string;
+};
+
+export type CatalogueAvailability = "in-stock" | "made-to-order" | "available-to-order";
+
 export type CatalogueItem = {
   id: string;
   slug: string;
@@ -26,6 +33,14 @@ export type CatalogueItem = {
   currency: "PLN";
   available: boolean;
   image: CatalogueImage | null;
+  createdAt: string;
+  featuredRank: 1 | 2 | 3 | null;
+  themes: CatalogueTheme[];
+  capacitiesMl: number[];
+  priceFrom: boolean;
+  buySeparatelyGrosze: number | null;
+  savingsPercent: number | null;
+  availability: CatalogueAvailability;
 };
 
 export type CatalogueDetail = CatalogueItem & {
