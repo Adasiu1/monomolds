@@ -44,7 +44,6 @@ function CatalogueDetail({ kindLabel, product }: { kindLabel: string; product: C
       <div className="mt-8"><Price amountGrosze={product.priceGrosze} /></div>
       <p className="mt-4 text-sm text-[var(--muted)]">{product.available ? "Dostępna" : "Chwilowo niedostępna"}</p>
       {product.variants.length > 0 ? <section className="mt-10"><h2 className="text-xl font-medium">Warianty</h2><ul className="mt-4 grid gap-3">{product.variants.map((variant) => <li key={variant.id} className="rounded-xl border border-[var(--border)] p-4"><div className="flex flex-wrap justify-between gap-3"><span>{variant.name}</span><Price amountGrosze={variant.priceGrosze} /></div><p className="mt-2 text-sm text-[var(--muted)]">{variant.available ? "Dostępny" : "Chwilowo niedostępny"}</p></li>)}</ul></section> : null}
-      <Notice title="Zakupy w przygotowaniu" announce={false}>Dodawanie do koszyka uruchomimy wkrótce.</Notice>
     </article>
   </div>;
 }
