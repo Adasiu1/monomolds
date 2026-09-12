@@ -9,9 +9,9 @@ import { Price } from "@/components/ui/price";
 
 // Made-up test examples, not the store's real products or prices.
 const products: ProductCardData[] = [
-  { name: "Forma Diament 100 ml", description: "Przykładowy produkt - cena demonstracyjna.", amountGrosze: 5000, available: true, href: "#demo-szczegoly" },
-  { name: "Zestaw form do dekoracji świątecznych - gwiazdy i małe choinki", description: "Przykładowy zestaw - test długiej nazwy i obniżki.", amountGrosze: 25000, originalAmountGrosze: 30000, lowest30DaysGrosze: 27000, available: true, href: "#demo-szczegoly" },
-  { name: "Forma Miś 130ml", description: "Przykład niedostępnego produktu.", amountGrosze: 6000, available: false, href: "#demo-szczegoly" },
+  { name: "Forma Diament 100 ml", amountGrosze: 5000, available: true, availabilityLabel: "Dostępna od ręki", capacitiesMl: [100], featured: true, href: "#demo-szczegoly" },
+  { name: "Zestaw form do dekoracji świątecznych - gwiazdy i małe choinki", amountGrosze: 27000, buySeparatelyGrosze: 30000, savingsPercent: 10, available: true, availabilityLabel: "Dostępny do zamówienia", href: "#demo-szczegoly" },
+  { name: "Forma Miś", amountGrosze: 6000, prefix: "od", available: true, availabilityLabel: "Wykonywana na zamówienie", capacitiesMl: [130, 500], href: "#demo-szczegoly" },
 ];
 
 type Result = "idle" | "loading" | "success" | "error";
@@ -97,7 +97,7 @@ export function Showcase() {
       <div className="ui-row"><Button variant="secondary" onClick={loadCatalogue} loading={catalogue === "loading"}>Wczytaj przykłady</Button><Button variant="ghost" disabled={catalogue === "loading"} onClick={() => setCatalogue("empty")}>Puste wyniki</Button><Button variant="ghost" disabled={catalogue === "loading"} onClick={() => setCatalogue("error")}>Błąd katalogu</Button></div>
       <div role="status" className="sr-only">{catalogue === "ready" ? "Wyświetlono 3 przykładowe produkty." : catalogue === "empty" ? "Brak przykładowych wyników." : ""}</div>
       {catalogue === "loading" ? <LoadingState><div className="ui-product-grid"><ProductCardSkeleton /><ProductCardSkeleton /><ProductCardSkeleton /></div></LoadingState> : null}
-      {catalogue === "ready" ? <div className="ui-product-grid">{products.map(product => <ProductCard key={product.name} product={product} action={product.available ? <LinkButton variant="secondary" href="#demo-szczegoly">Zobacz przykład <span className="ui-arrow" aria-hidden="true">→</span></LinkButton> : <Button disabled>Produkt niedostępny</Button>} />)}</div> : null}
+      {catalogue === "ready" ? <div className="ui-product-grid">{products.map(product => <ProductCard key={product.name} product={product} />)}</div> : null}
       {catalogue === "empty" ? <EmptyState title="Brak wyników" action={<Button onClick={loadCatalogue}>Pokaż przykłady</Button>}>Spróbuj ponownie z przykładowym zestawem produktów.</EmptyState> : null}
       {catalogue === "error" ? <Notice tone="error" title="Nie udało się wczytać produktów"><p>To błąd demonstracyjny. Możesz ponowić próbę.</p><Button variant="secondary" onClick={loadCatalogue}>Spróbuj ponownie</Button></Notice> : null}
       <div id="demo-szczegoly" className="ui-demo-detail"><h3>Przykładowe szczegóły</h3><p className="ui-muted">Tutaj prowadzą karty demonstracyjne. Docelowo każda karta otworzy własną stronę produktu.</p><div className="ui-row"><Price amountGrosze={12900} /><Price amountGrosze={21900} originalAmountGrosze={25900} lowest30DaysGrosze={22900} /><Price amountGrosze={0} /><Price amountGrosze={123456789} /></div></div>

@@ -88,10 +88,22 @@ async function makeImages(rows: ProductWithImages[]): Promise<Map<string, Catalo
   }));
 }
 
-function toItem(product: ProductRow, image: CatalogueImage | null): CatalogueItem {
+function toItem(
+  product: ProductRow,
+  image: CatalogueImage | null,
+  variants: ProductRow[] = [],
+): CatalogueItem {
+  const publishedVariants = variants.filter(
+    (variant) =>
+      variant.type === "variant" &&
+      variant.status === "published" &&
+      variant.price !== null,
+  );
+  const prices = publishedVariants.map((variant) => variant.price!);
+
   if (
     !product.slug ||
-    product.price === null ||
+    (product.price === null && prices.length === 0) ||
     product.currency !== "PLN" ||
     (product.type !== "product" && product.type !== "bundle")
   ) {
@@ -99,17 +111,33 @@ function toItem(product: ProductRow, image: CatalogueImage | null): CatalogueIte
     throw new CatalogueRepositoryError();
   }
 
+  const displayPrice = prices.length > 0 ? Math.min(...prices) : product.price!;
+
   return {
     id: product.id,
     slug: product.slug,
     kind: product.type,
     name: product.name,
     description: product.description,
-    priceGrosze: product.price,
+    priceGrosze: displayPrice,
     currency: product.currency,
     // Published moulds remain orderable at zero stock because they are made to order.
     available: true,
     image,
+    createdAt: product.created_at,
+    // MON-41 will populate these fields from structured catalogue data.
+    featuredRank: null,
+    themes: [],
+    capacitiesMl: [],
+    priceFrom: publishedVariants.length > 1,
+    buySeparatelyGrosze: null,
+    savingsPercent: null,
+    availability:
+      product.type === "bundle"
+        ? "available-to-order"
+        : product.stock_quantity > 0
+          ? "in-stock"
+          : "made-to-order",
   };
 }
 
@@ -128,8 +156,31 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   }
 
   const products = data as ProductWithImages[];
+  const variantsByParent = new Map<string, ProductRow[]>();
+  if (products.length > 0) {
+    const { data: variantData, error: variantError } = await client
+      .from("products")
+      .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, created_at, updated_at")
+      .eq("status", "published")
+      .eq("type", "variant")
+      .in("parent_id", products.map((product) => product.id));
+
+    if (variantError || !variantData) {
+      reportDataError("list-catalogue-variants", variantError);
+      throw new CatalogueRepositoryError();
+    }
+    for (const variant of variantData as ProductRow[]) {
+      if (!variant.parent_id) continue;
+      const siblings = variantsByParent.get(variant.parent_id) ?? [];
+      siblings.push(variant);
+      variantsByParent.set(variant.parent_id, siblings);
+    }
+  }
+
   const images = await makeImages(products);
-  return products.map((product) => toItem(product, images.get(product.id) ?? null));
+  return products.map((product) =>
+    toItem(product, images.get(product.id) ?? null, variantsByParent.get(product.id) ?? []),
+  );
 }
 
 export async function getPublishedCatalogueItem(slug: string, kind: CatalogueItem["kind"]): Promise<CatalogueDetail | null> {
@@ -150,7 +201,7 @@ export async function getPublishedCatalogueItem(slug: string, kind: CatalogueIte
 
   const product = data as ProductWithRelations;
   const image = (await makeImages([product])).get(product.id) ?? null;
-  const item = toItem(product, image);
+  const item = toItem(product, image, product.variants ?? []);
   const variants: CatalogueVariant[] = (product.variants ?? [])
     .filter((variant) => variant.type === "variant" && variant.status === "published" && variant.price !== null)
     .map((variant) => ({ id: variant.id, name: variant.name, priceGrosze: variant.price!, available: true }));

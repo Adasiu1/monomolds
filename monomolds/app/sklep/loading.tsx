@@ -1,15 +1,5 @@
-export default function ShopLoading() {
-  return <CatalogueLoading label="Ładowanie form..." />;
-}
+import { CatalogueLoading } from "@/components/catalogue/catalogue-loading";
 
-function CatalogueLoading({ label }: { label: string }) {
-  return (
-    <div className="site-container py-12 sm:py-20" aria-busy="true" aria-live="polite">
-      <p className="eyebrow">Mono Molds</p>
-      <h1 className="mt-5 text-4xl font-medium tracking-tight sm:text-6xl">{label}</h1>
-      <div className="ui-product-grid" aria-hidden="true">
-        {[1, 2, 3].map((item) => <div key={item} className="aspect-[4/5] animate-pulse rounded-2xl bg-[var(--surface)]" />)}
-      </div>
-    </div>
-  );
+export default function ShopLoading() {
+  return <CatalogueLoading title="Formy" />;
 }

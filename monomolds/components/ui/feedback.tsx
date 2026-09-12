@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { BrandLoader } from "@/components/ui/brand-loader";
+
 type Tone = "info" | "success" | "error";
 const icons: Record<Tone, string> = { info: "i", success: "✓", error: "!" };
 
@@ -24,5 +26,5 @@ export function ProductCardSkeleton() {
 
 /** Keeps a status message available while a page replaces its content with skeletons. */
 export function LoadingState({ label = "Wczytujemy produkty…", children }: { label?: string; children?: ReactNode }) {
-  return <div><p role="status" className="ui-muted">{label}</p><div aria-busy="true">{children}</div></div>;
+  return <div><BrandLoader label={label} /><div aria-busy="true">{children}</div></div>;
 }

@@ -1,12 +1,27 @@
-import { ProductCard } from "@/components/ui/product-card";
+import { connection } from "next/server";
+
+import { CatalogueCard } from "@/components/catalogue/catalogue-card";
+import { CatalogueControls } from "@/components/catalogue/catalogue-controls";
+import { RetryButton } from "@/components/catalogue/retry-button";
+import { LinkButton } from "@/components/ui/button";
 import { EmptyState, Notice } from "@/components/ui/feedback";
-import { getPublishedCatalogue, CatalogueRepositoryError } from "@/lib/catalogue/repository";
+import {
+  filterAndSortCatalogue,
+  getCatalogueFilterOptions,
+  parseCatalogueFilters,
+  type CatalogueSearchParams,
+} from "@/lib/catalogue/presentation";
+import { CatalogueRepositoryError, getPublishedCatalogue } from "@/lib/catalogue/repository";
 import type { CatalogueItem } from "@/lib/catalogue/types";
 
 export const metadata = { title: "Formy" };
-export const dynamic = "force-dynamic";
 
-export default async function FormsPage() {
+type FormsPageProps = {
+  searchParams: Promise<CatalogueSearchParams>;
+};
+
+export default async function FormsPage({ searchParams }: FormsPageProps) {
+  await connection();
   let products: CatalogueItem[] | null;
   try {
     products = await getPublishedCatalogue("product");
@@ -16,15 +31,63 @@ export default async function FormsPage() {
   }
   if (!products) return <CatalogueError />;
 
-  return <div className="site-container py-12 sm:py-20"><p className="eyebrow">Ręcznie wykonywane w Polsce</p><h1 className="mt-5 text-4xl font-medium tracking-tight sm:text-6xl">Formy</h1><p className="mt-6 max-w-xl leading-7 text-[var(--muted)]">Poznaj ręcznie wykonywane formy silikonowe Mono Molds.</p>{products.length > 0 ? <div className="ui-product-grid">{products.map((product) => <ProductCard key={product.id} product={{ name: product.name, href: `/sklep/${product.slug}`, description: product.description ?? undefined, amountGrosze: product.priceGrosze, available: product.available, image: product.image ? { src: product.image.url, alt: product.image.alt } : undefined }} />)}</div> : <EmptyState title="Nie ma jeszcze dostępnych form">Wróć wkrótce - pracujemy nad kolekcją.</EmptyState>}</div>;
+  const filters = parseCatalogueFilters(await searchParams);
+  const visibleProducts = filterAndSortCatalogue(products, filters);
+  const options = getCatalogueFilterOptions(products);
+
+  return (
+    <div className="site-container catalogue-page">
+      <header className="catalogue-header">
+        <p className="eyebrow">Ręcznie wykonywane w Polsce</p>
+        <h1>Formy</h1>
+        <p>Pojedyncze formy silikonowe odlewane w małej pracowni Mono Molds.</p>
+      </header>
+
+      {products.length > 0 ? (
+        <>
+          <CatalogueControls
+            key={`${filters.sort}:${filters.themes.join(",")}:${filters.capacitiesMl.join(",")}`}
+            filters={filters}
+            themes={options.themes}
+            capacitiesMl={options.capacitiesMl}
+            resultCount={visibleProducts.length}
+          />
+          {visibleProducts.length > 0 ? (
+            <ul className="ui-product-grid">
+              {visibleProducts.map((product) => <li key={product.id}><CatalogueCard item={product} /></li>)}
+            </ul>
+          ) : (
+            <EmptyState
+              title="Nie znaleźliśmy pasujących form"
+              action={<LinkButton href="/sklep" variant="secondary">Wyczyść filtry</LinkButton>}
+            >
+              Zmień wybrane motywy lub pojemności i spróbuj ponownie.
+            </EmptyState>
+          )}
+        </>
+      ) : (
+        <EmptyState
+          title="Nie ma jeszcze dostępnych form"
+          action={<LinkButton href="/zestawy" variant="secondary">Zobacz zestawy</LinkButton>}
+        >
+          Wróć wkrótce lub zobacz przygotowane przez nas zestawy.
+        </EmptyState>
+      )}
+    </div>
+  );
 }
 
 function CatalogueError() {
   return (
-    <div className="site-container py-12 sm:py-20">
-      <p className="eyebrow">Formy</p>
-      <h1 className="mt-5 text-4xl font-medium tracking-tight sm:text-6xl">Katalog jest chwilowo niedostępny</h1>
-      <Notice tone="error" title="Nie udało się wczytać produktów.">Odśwież stronę lub spróbuj ponownie za chwilę.</Notice>
+    <div className="site-container catalogue-page">
+      <header className="catalogue-header">
+        <p className="eyebrow">Ręcznie wykonywane w Polsce</p>
+        <h1>Formy</h1>
+      </header>
+      <Notice tone="error" title="Nie udało się wczytać produktów.">
+        <p>Spróbuj ponownie. Jeśli problem nie zniknie, wróć do nas za chwilę.</p>
+        <RetryButton />
+      </Notice>
     </div>
   );
 }
