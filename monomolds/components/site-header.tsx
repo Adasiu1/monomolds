@@ -2,6 +2,7 @@ import { BrandLogo } from "./brand-logo";
 import { MobileNavigation } from "./mobile-navigation";
 import { PageTransitionLink } from "./page-transition";
 import { LinkButton } from "./ui/button";
+import { CartBadge } from "@/features/cart/cart-badge";
 
 // The mobile menu uses this full list. Desktop shows only Formy and Zestawy here.
 const navigationItems = [
@@ -106,9 +107,7 @@ export function SiteHeader() {
           >
             <BagIcon />
             <span className="hidden sm:inline">Koszyk</span>
-            <span className="cart-count" aria-hidden="true">
-              0
-            </span>
+            <CartBadge />
           </PageTransitionLink>
         </div>
       </div>
