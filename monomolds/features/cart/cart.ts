@@ -62,6 +62,22 @@ export function readCartSnapshot(): CartItem[] {
   return cachedCartSnapshot;
 }
 
+export function writeCartSnapshot(items: CartItem[]): CartItem[] {
+  const normalized = normalizeCartItems(items);
+  if (typeof window === "undefined") return normalized;
+
+  const serialized = JSON.stringify(normalized);
+  window.localStorage.setItem(CART_STORAGE_KEY, serialized);
+  cachedStorageValue = serialized;
+  cachedCartSnapshot = normalized;
+  window.dispatchEvent(new Event("monomolds-cart-change"));
+  return normalized;
+}
+
+export function addMerchandiseToCart(merchandiseId: string, quantity = 1): CartItem[] {
+  return writeCartSnapshot(addCartItem(readCartSnapshot(), merchandiseId, quantity));
+}
+
 export function subscribeToCart(callback: () => void) {
   window.addEventListener("storage", callback);
   window.addEventListener("monomolds-cart-change", callback);

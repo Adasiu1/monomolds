@@ -1,17 +1,31 @@
 insert into public.products (id, type, slug, name, description, price, currency, stock_quantity, status)
 values
   ('00000000-0000-0000-0000-000000000001', 'product', 'forma-malpka-100-ml', 'Forma Małpka 100 ml', 'Forma silikonowa Małpka o pojemności 100 ml.', 5000, 'PLN', 0, 'published'),
-  ('00000000-0000-0000-0000-000000000002', 'product', 'forma-serce-130-ml', 'Forma Serce 130 ml', 'Forma silikonowa Serce o pojemności 130 ml.', 5500, 'PLN', 0, 'published'),
-  ('00000000-0000-0000-0000-000000000003', 'product', 'forma-kostka-500-ml', 'Forma Kostka 500 ml', 'Forma silikonowa Kostka o pojemności 500 ml.', 9000, 'PLN', 0, 'published'),
+  ('00000000-0000-0000-0000-000000000002', 'product', 'forma-mis-130-ml', 'Forma Miś 130 ml', 'Forma silikonowa Miś o pojemności 130 ml.', 6000, 'PLN', 0, 'published'),
+  ('00000000-0000-0000-0000-000000000003', 'product', 'forma-dracula-100-ml', 'Forma Dracula 100 ml', 'Forma silikonowa Dracula o pojemności 100 ml.', 5000, 'PLN', 0, 'published'),
+  ('00000000-0000-0000-0000-000000000005', 'product', 'forma-kokos-100-ml', 'Forma Kokos 100 ml', 'Forma silikonowa o pojemności 100 ml z wyraźną fakturą kokosa.', 5000, 'PLN', 0, 'published'),
   ('00000000-0000-0000-0000-000000000004', 'product', 'secret-monkey', 'Secret Monkey', 'Produkt tylko do testowania RLS.', 9999, 'PLN', 5, 'draft'),
-  ('00000000-0000-0000-0000-000000000020', 'bundle', 'starter-set', 'Starter Set', 'Zestaw startowy foremek.', 9999, 'PLN', 5, 'published');
+  ('00000000-0000-0000-0000-000000000020', 'bundle', 'halloween-set', 'Halloween Zestaw', 'Zestaw siedmiu form.', 22500, 'PLN', 5, 'published');
 
 insert into public.products (id, parent_id, type, name, price, currency, stock_quantity, status)
 values
   ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'variant', 'Archiwalny wariant Małpki - 6 szt.', 4999, 'PLN', 0, 'archived'),
   ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'variant', 'Archiwalny wariant Małpki - 12 szt.', 7999, 'PLN', 0, 'archived');
 
-insert into public.products (id, parent_id, type, name, status)
+insert into public.products (id, parent_id, type, name, status, bundle_quantity)
 values
-  ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Monkey - 6 szt.', 'published'),
-  ('00000000-0000-0000-0000-000000000022', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Heart', 'published');
+  ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Forma Małpka 100 ml', 'published', 6),
+  ('00000000-0000-0000-0000-000000000022', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Forma Serce 100 ml', 'published', 1);
+
+insert into public.product_details (product_id, capacity_ml, material, care_instructions, model_storage_path, model_alt_text)
+values
+  ('00000000-0000-0000-0000-000000000001', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], null, null),
+  ('00000000-0000-0000-0000-000000000002', 130, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], null, null),
+  ('00000000-0000-0000-0000-000000000003', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], null, null),
+  ('00000000-0000-0000-0000-000000000005', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], 'products/00000000-0000-0000-0000-000000000005/kokos.glb', 'Interaktywny model 3D formy Kokos 100 ml');
+
+insert into public.product_images (id, product_id, storage_path, alt_text, position)
+values
+  ('00000000-0000-0000-0000-000000001051', '00000000-0000-0000-0000-000000000005', 'products/00000000-0000-0000-0000-000000000005/front.webp', 'Forma Kokos 100 ml i gotowy korpus widziane z przodu', 0),
+  ('00000000-0000-0000-0000-000000001052', '00000000-0000-0000-0000-000000000005', 'products/00000000-0000-0000-0000-000000000005/left.webp', 'Forma Kokos 100 ml i gotowy korpus widziane z lewej strony', 1),
+  ('00000000-0000-0000-0000-000000001053', '00000000-0000-0000-0000-000000000005', 'products/00000000-0000-0000-0000-000000000005/right.webp', 'Forma Kokos 100 ml i gotowy korpus widziane z prawej strony', 2);

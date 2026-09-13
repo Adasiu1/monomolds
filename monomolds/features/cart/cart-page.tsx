@@ -4,13 +4,12 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { repriceCart } from "./actions";
 import {
-  CART_STORAGE_KEY,
   EMPTY_CART,
   removeCartItem,
   readCartSnapshot,
-  seedDemoCartIfNeeded,
   subscribeToCart,
   updateCartItem,
+  writeCartSnapshot,
 } from "./cart";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Notice } from "@/components/ui/feedback";
@@ -22,10 +21,6 @@ export function CartPage() {
   const items = storedItems;
   const [quote, setQuote] = useState<Quote | null>(null);
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (seedDemoCartIfNeeded()) window.dispatchEvent(new Event("monomolds-cart-change"));
-  }, []);
 
   useEffect(() => {
     if (items.length === 0) {
@@ -50,8 +45,7 @@ export function CartPage() {
   }, [items]);
 
   const commit = (next: CartItem[]) => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event("monomolds-cart-change"));
+    writeCartSnapshot(next);
   };
   const update = (merchandiseId: string, quantity: number) => {
     commit(updateCartItem(items, merchandiseId, quantity));

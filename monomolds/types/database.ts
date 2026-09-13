@@ -271,9 +271,45 @@ export type Database = {
           },
         ]
       }
+      product_details: {
+        Row: {
+          capacity_ml: number
+          care_instructions: string[]
+          material: string
+          model_alt_text: string | null
+          model_storage_path: string | null
+          product_id: string
+        }
+        Insert: {
+          capacity_ml: number
+          care_instructions: string[]
+          material: string
+          model_alt_text?: string | null
+          model_storage_path?: string | null
+          product_id: string
+        }
+        Update: {
+          capacity_ml?: number
+          care_instructions?: string[]
+          material?: string
+          model_alt_text?: string | null
+          model_storage_path?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_details_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           bundle_product_id: string | null
+          bundle_quantity: number | null
           created_at: string
           currency: string
           description: string | null
@@ -289,6 +325,7 @@ export type Database = {
         }
         Insert: {
           bundle_product_id?: string | null
+          bundle_quantity?: number | null
           created_at?: string
           currency?: string
           description?: string | null
@@ -304,6 +341,7 @@ export type Database = {
         }
         Update: {
           bundle_product_id?: string | null
+          bundle_quantity?: number | null
           created_at?: string
           currency?: string
           description?: string | null

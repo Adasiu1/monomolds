@@ -1,19 +1,45 @@
 /** Public, presentation-ready catalogue contract. UI never receives database rows. */
 export type CatalogueImage = {
+  id: string;
   url: string;
   alt: string;
 };
+
+export type CatalogueMedia =
+  | ({ kind: "image" } & CatalogueImage)
+  | {
+      kind: "model";
+      id: string;
+      url: string;
+      alt: string;
+      posterUrl: string | null;
+    };
 
 export type CatalogueVariant = {
   id: string;
   name: string;
   priceGrosze: number;
+  stockQuantity: number;
   available: boolean;
 };
 
 export type CatalogueBundleItem = {
   id: string;
   name: string;
+  quantity: number;
+};
+
+export type CatalogueOfferAvailability =
+  | { status: "in-stock"; fulfilmentDays: null }
+  | { status: "made-to-order"; fulfilmentDays: number }
+  | { status: "unavailable"; fulfilmentDays: null };
+
+export type CatalogueOffer = {
+  merchandiseId: string;
+  label: string | null;
+  priceGrosze: number;
+  currency: "PLN";
+  availability: CatalogueOfferAvailability;
 };
 
 export type CatalogueTheme = {
@@ -44,6 +70,17 @@ export type CatalogueItem = {
 };
 
 export type CatalogueDetail = CatalogueItem & {
+  media: CatalogueMedia[];
   variants: CatalogueVariant[];
   bundleItems: CatalogueBundleItem[];
+  capacityMl: number | null;
+  material: string | null;
+  careInstructions: string[];
+  offers: CatalogueOffer[];
+  defaultMerchandiseId: string;
 };
+
+export type CatalogueDetailResult =
+  | { status: "ready"; item: CatalogueDetail }
+  | { status: "not-found" }
+  | { status: "unavailable" };

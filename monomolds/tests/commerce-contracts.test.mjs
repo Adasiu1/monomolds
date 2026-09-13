@@ -75,6 +75,32 @@ test("uses the contract error for a missing product", async () => {
   });
 });
 
+test("prices the catalogue merchandise id without a client-provided price", async () => {
+  const result = await createCommerceFixtureRepository().quote({
+    items: [{ merchandiseId: "00000000-0000-0000-0000-000000000005", quantity: 2 }],
+    deliveryMethod: "inpost_locker",
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.data.quote.items[0].name, "Forma Kokos 100 ml");
+  assert.equal(result.data.quote.items[0].unitPriceGrosze, 5000);
+  assert.equal(result.data.quote.items[0].lineTotalGrosze, 10000);
+});
+
+test("prices the catalogue bundle id and preserves its physical quantity", async () => {
+  const result = await createCommerceFixtureRepository().quote({
+    items: [{ merchandiseId: "00000000-0000-0000-0000-000000000020", quantity: 1 }],
+    deliveryMethod: "inpost_locker",
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.data.quote.items[0].name, "Halloween Zestaw");
+  assert.equal(result.data.quote.items[0].physicalItemCount, 7);
+  assert.equal(result.data.quote.items[0].lineTotalGrosze, 22500);
+});
+
 test("rejects delivery details that do not match the quote", async () => {
   const repository = createCommerceFixtureRepository();
   const quoteResult = await repository.quote({
@@ -165,12 +191,12 @@ test("collects all checkout field errors", async () => {
   if (result.ok) return;
   assert.equal(result.error.code, "INVALID_INPUT");
   assert.deepEqual(Object.keys(result.error.fieldErrors ?? {}).sort(), [
+    "acceptedTerms",
     "customer.email",
     "customer.firstName",
     "customer.lastName",
     "customer.phone",
     "delivery.pointId",
-    "acceptedTerms",
   ]);
 });
 

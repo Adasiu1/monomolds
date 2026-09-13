@@ -41,6 +41,34 @@ type FixtureOrder = {
 const STANDARD_SHIPPING_GROSZE = 1599;
 
 const FIXTURE_CATALOGUE: Record<string, FixtureMerchandise> = {
+  "00000000-0000-0000-0000-000000000020": {
+    name: "Halloween Zestaw",
+    kind: "bundle",
+    components: [
+      {
+        merchandiseId: "00000000-0000-0000-0000-000000000001",
+        name: "Forma Małpka 100 ml",
+        priceGrosze: 3500,
+        quantity: 6,
+      },
+      {
+        merchandiseId: "variant-heart",
+        name: "Forma Serce 100 ml",
+        priceGrosze: 4000,
+        quantity: 1,
+      },
+    ],
+  },
+  "00000000-0000-0000-0000-000000000005": {
+    name: "Forma Kokos 100 ml",
+    kind: "product",
+    components: [{
+      merchandiseId: "00000000-0000-0000-0000-000000000005",
+      name: "Forma Kokos 100 ml",
+      priceGrosze: 5000,
+      quantity: 1,
+    }],
+  },
   "variant-heart": {
     name: "Serce",
     kind: "product",
