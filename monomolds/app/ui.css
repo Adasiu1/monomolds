@@ -47,6 +47,7 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .ui-product-link h3 { margin-top: 1rem; font-size: 1.15rem; font-weight: 550; line-height: 1.5; overflow-wrap: anywhere; }
 .ui-product-media { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: .85rem; overflow: hidden; background: var(--surface); }
 .ui-product-image { object-fit: contain; transition: transform 200ms var(--ease-out); }
+.ui-product-media .ui-product-image { object-fit: cover; }
 .ui-image-placeholder { display: flex; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; text-align: center; font-size: .8rem; color: var(--muted); }
 .ui-featured-badge { position: absolute; top: .75rem; left: .75rem; display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .55rem; border-radius: 999px; background: var(--background); color: var(--foreground); font-size: .72rem; font-weight: 650; box-shadow: 0 1px 0 rgb(255 255 255 / 8%); }
 .ui-capacity-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; list-style: none; }
@@ -124,7 +125,8 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .product-gallery-model-label { display: grid; width: 100%; height: 100%; place-items: center; color: var(--accent); font-size: .9rem; font-weight: 700; letter-spacing: .08em; }
 .product-model, .product-model-canvas { width: 100%; height: 100%; }
 .product-model { position: relative; }
-.product-model model-viewer { display: block; width: 100%; height: 100%; border: 0; background: transparent; --poster-color: transparent; --progress-bar-color: var(--accent); cursor: grab; }
+.product-model-canvas { display: grid; place-items: center; }
+.product-model model-viewer { display: block; width: 82%; height: 82%; border: 0; background: transparent; --poster-color: transparent; --progress-bar-height: 0px; cursor: grab; }
 .product-model model-viewer:active { cursor: grabbing; }
 .product-model-status { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1rem; color: var(--muted); text-align: center; }
 .product-model-hint { position: absolute; right: 1rem; bottom: 1rem; left: 1rem; color: var(--muted); font-size: .75rem; text-align: center; pointer-events: none; }
