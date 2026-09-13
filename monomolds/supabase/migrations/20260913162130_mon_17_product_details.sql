@@ -102,7 +102,7 @@ values (
   100,
   'Silikon platynowy',
   array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'],
-  'products/00000000-0000-0000-0000-000000000005/kokos.glb',
+  'products/forma-kokos-100-ml/kokos.glb',
   'Interaktywny model 3D formy Kokos 100 ml'
 )
 on conflict (product_id) do update
@@ -124,21 +124,21 @@ values
   (
     '00000000-0000-0000-0000-000000001051',
     '00000000-0000-0000-0000-000000000005',
-    'products/00000000-0000-0000-0000-000000000005/front.webp',
+    'products/forma-kokos-100-ml/front.webp',
     'Forma Kokos 100 ml i gotowy korpus widziane z przodu',
     0
   ),
   (
     '00000000-0000-0000-0000-000000001052',
     '00000000-0000-0000-0000-000000000005',
-    'products/00000000-0000-0000-0000-000000000005/left.webp',
+    'products/forma-kokos-100-ml/left.webp',
     'Forma Kokos 100 ml i gotowy korpus widziane z lewej strony',
     1
   ),
   (
     '00000000-0000-0000-0000-000000001053',
     '00000000-0000-0000-0000-000000000005',
-    'products/00000000-0000-0000-0000-000000000005/right.webp',
+    'products/forma-kokos-100-ml/right.webp',
     'Forma Kokos 100 ml i gotowy korpus widziane z prawej strony',
     2
   )

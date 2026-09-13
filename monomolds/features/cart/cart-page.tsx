@@ -58,7 +58,7 @@ export function CartPage() {
     const pricedItem = quote?.items.find((item) => item.merchandiseId === cartItem.merchandiseId);
     return {
       ...cartItem,
-      name: pricedItem?.name ?? cartItem.merchandiseId,
+      name: pricedItem?.name ?? "Produkt w koszyku",
       lineTotalGrosze: pricedItem?.unitPriceGrosze ? pricedItem.unitPriceGrosze * cartItem.quantity : null,
     };
   });
@@ -72,7 +72,7 @@ export function CartPage() {
         <h2 id="cart-items-heading" className="sr-only">Pozycje w koszyku</h2>
         <ul className="cart-items">
           {displayItems.map((item) => <li key={item.merchandiseId} className="cart-item">
-            <div><h3>{item.name}</h3><p className="ui-muted">Identyfikator: {item.merchandiseId}</p></div>
+            <div><h3>{item.name}</h3></div>
             <label> Sztuki <input type="number" min="1" max="99" value={item.quantity} onChange={(event) => update(item.merchandiseId, Number(event.target.value))} /></label>
             <strong className="cart-item-price">{item.lineTotalGrosze === null ? "..." : formatPrice(item.lineTotalGrosze)}</strong>
             <Button variant="ghost" onClick={() => commit(removeCartItem(items, item.merchandiseId))}>Usuń</Button>
