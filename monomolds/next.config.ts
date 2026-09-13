@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
 
   // Allow phones on our Wi-Fi to connect to Next.js development tools.
   // Update this address if the Mac's local IP changes.
-  allowedDevOrigins: ['192.168.1.47'],
+  allowedDevOrigins: ['127.0.0.1', 'localhost', '192.168.1.47'],
 
   images: {
     remotePatterns: [

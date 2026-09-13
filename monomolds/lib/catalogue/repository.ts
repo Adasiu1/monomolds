@@ -1,19 +1,25 @@
 import "server-only";
 
 import { createClient } from "@supabase/supabase-js";
+import { cache } from "react";
 
 import type { Database } from "@/types/database";
 
 import type {
   CatalogueBundleItem,
   CatalogueDetail,
+  CatalogueDetailResult,
   CatalogueImage,
   CatalogueItem,
+  CatalogueMedia,
+  CatalogueOffer,
   CatalogueVariant,
 } from "./types";
 
 const IMAGE_BUCKET = "product-images";
+const MODEL_BUCKET = "product-models";
 const IMAGE_URL_TTL_SECONDS = 60 * 60;
+const STANDARD_FULFILMENT_DAYS = 7;
 
 export class CatalogueRepositoryError extends Error {
   constructor() {
@@ -21,12 +27,12 @@ export class CatalogueRepositoryError extends Error {
   }
 }
 
-type ImageRow = { storage_path: string; alt_text: string; position: number };
+type ImageRow = { id: string; storage_path: string; alt_text: string; position: number };
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
+type ProductDetailsRow = Database["public"]["Tables"]["product_details"]["Row"];
 type ProductWithImages = ProductRow & { product_images: ImageRow[] | null };
 type ProductWithRelations = ProductWithImages & {
-  variants: ProductRow[] | null;
-  bundle_items: ProductRow[] | null;
+  product_details: ProductDetailsRow | ProductDetailsRow[] | null;
 };
 
 function getClient() {
@@ -78,13 +84,18 @@ async function signImages(paths: string[]): Promise<Map<string, string>> {
   return new Map(data.flatMap((image) => image.path && image.signedUrl ? [[image.path, image.signedUrl] as const] : []));
 }
 
-async function makeImages(rows: ProductWithImages[]): Promise<Map<string, CatalogueImage | null>> {
+async function makeImages(rows: ProductWithImages[]): Promise<Map<string, CatalogueImage[]>> {
   const paths = rows.flatMap((product) => product.product_images?.map((image) => image.storage_path) ?? []);
   const urls = await signImages(paths);
 
   return new Map(rows.map((product) => {
-    const image = [...(product.product_images ?? [])].sort((a, b) => a.position - b.position)[0];
-    return [product.id, image && urls.get(image.storage_path) ? { url: urls.get(image.storage_path)!, alt: image.alt_text } : null];
+    const images = [...(product.product_images ?? [])]
+      .sort((left, right) => left.position - right.position)
+      .flatMap((image) => {
+        const url = urls.get(image.storage_path);
+        return url ? [{ id: image.id, url, alt: image.alt_text }] : [];
+      });
+    return [product.id, images];
   }));
 }
 
@@ -145,7 +156,7 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   const client = getClient();
   const { data, error } = await client
     .from("products")
-    .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, created_at, updated_at, product_images(storage_path, alt_text, position)")
+    .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at, product_images(id, storage_path, alt_text, position)")
     .eq("status", "published")
     .eq("type", kind)
     .order("created_at", { ascending: false });
@@ -160,7 +171,7 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   if (products.length > 0) {
     const { data: variantData, error: variantError } = await client
       .from("products")
-      .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, created_at, updated_at")
+      .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
       .eq("status", "published")
       .eq("type", "variant")
       .in("parent_id", products.map((product) => product.id));
@@ -179,15 +190,15 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
 
   const images = await makeImages(products);
   return products.map((product) =>
-    toItem(product, images.get(product.id) ?? null, variantsByParent.get(product.id) ?? []),
+    toItem(product, images.get(product.id)?.[0] ?? null, variantsByParent.get(product.id) ?? []),
   );
 }
 
-export async function getPublishedCatalogueItem(slug: string, kind: CatalogueItem["kind"]): Promise<CatalogueDetail | null> {
+async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kind"]): Promise<CatalogueDetail | null> {
   const client = getClient();
   const { data, error } = await client
     .from("products")
-    .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, created_at, updated_at, product_images(storage_path, alt_text, position), variants:products!products_parent_id_fkey(id, name, price, stock_quantity, status, type), bundle_items:products!products_parent_id_fkey(id, name, status, type)")
+    .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at, product_images(id, storage_path, alt_text, position), product_details(capacity_ml, material, care_instructions, model_storage_path, model_alt_text, product_id)")
     .eq("status", "published")
     .eq("type", kind)
     .eq("slug", slug)
@@ -200,14 +211,99 @@ export async function getPublishedCatalogueItem(slug: string, kind: CatalogueIte
   if (!data) return null;
 
   const product = data as ProductWithRelations;
-  const image = (await makeImages([product])).get(product.id) ?? null;
-  const item = toItem(product, image, product.variants ?? []);
-  const variants: CatalogueVariant[] = (product.variants ?? [])
-    .filter((variant) => variant.type === "variant" && variant.status === "published" && variant.price !== null)
-    .map((variant) => ({ id: variant.id, name: variant.name, priceGrosze: variant.price!, available: true }));
-  const bundleItems: CatalogueBundleItem[] = (product.bundle_items ?? [])
-    .filter((bundleItem) => bundleItem.type === "bundle_item" && bundleItem.status === "published")
-    .map((bundleItem) => ({ id: bundleItem.id, name: bundleItem.name }));
+  const { data: childData, error: childError } = await client
+    .from("products")
+    .select("id, slug, name, description, price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+    .eq("parent_id", product.id)
+    .eq("status", "published")
+    .in("type", ["variant", "bundle_item"]);
 
-  return { ...item, variants, bundleItems };
+  if (childError || !childData) {
+    reportDataError("get-catalogue-item-children", childError);
+    throw new CatalogueRepositoryError();
+  }
+
+  const children = childData as ProductRow[];
+  const images = (await makeImages([product])).get(product.id) ?? [];
+  const item = toItem(product, images[0] ?? null, children);
+  const variants: CatalogueVariant[] = children
+    .filter((variant) => variant.type === "variant" && variant.status === "published" && variant.price !== null)
+    .map((variant) => ({
+      id: variant.id,
+      name: variant.name,
+      priceGrosze: variant.price!,
+      stockQuantity: variant.stock_quantity,
+      available: true,
+    }));
+  const bundleItems: CatalogueBundleItem[] = children
+    .filter((bundleItem) => bundleItem.type === "bundle_item" && bundleItem.status === "published")
+    .map((bundleItem) => ({ id: bundleItem.id, name: bundleItem.name, quantity: bundleItem.bundle_quantity ?? 1 }));
+
+  const details = Array.isArray(product.product_details)
+    ? product.product_details[0] ?? null
+    : product.product_details;
+  const model = details?.model_storage_path && details.model_alt_text
+    ? client.storage.from(MODEL_BUCKET).getPublicUrl(details.model_storage_path).data.publicUrl
+    : null;
+  const media: CatalogueMedia[] = [
+    ...images.map((image) => ({ kind: "image" as const, ...image })),
+    ...(model && details?.model_alt_text
+      ? [{
+          kind: "model" as const,
+          id: `${product.id}-model`,
+          url: model,
+          alt: details.model_alt_text,
+          posterUrl: images[0]?.url ?? null,
+        }]
+      : []),
+  ];
+  const variantOffers: CatalogueOffer[] = variants.map((variant) => ({
+    merchandiseId: variant.id,
+    label: variant.name,
+    priceGrosze: variant.priceGrosze,
+    currency: "PLN",
+    availability: !variant.available
+      ? { status: "unavailable", fulfilmentDays: null }
+      : variant.stockQuantity > 0
+        ? { status: "in-stock", fulfilmentDays: null }
+        : { status: "made-to-order", fulfilmentDays: STANDARD_FULFILMENT_DAYS },
+  }));
+  const offers: CatalogueOffer[] = variantOffers.length > 0
+    ? variantOffers
+    : [{
+        merchandiseId: product.id,
+        label: null,
+        priceGrosze: item.priceGrosze,
+        currency: "PLN",
+        availability: product.stock_quantity > 0
+          ? { status: "in-stock", fulfilmentDays: null }
+          : { status: "made-to-order", fulfilmentDays: STANDARD_FULFILMENT_DAYS },
+      }];
+
+  return {
+    ...item,
+    media,
+    variants,
+    bundleItems,
+    capacityMl: details?.capacity_ml ?? null,
+    material: details?.material ?? null,
+    careInstructions: details?.care_instructions ?? [],
+    offers,
+    defaultMerchandiseId: offers[0].merchandiseId,
+  };
+}
+
+export const getPublishedCatalogueItem = cache(loadPublishedCatalogueItem);
+
+export async function getPublishedCatalogueDetail(
+  slug: string,
+  kind: CatalogueItem["kind"],
+): Promise<CatalogueDetailResult> {
+  try {
+    const item = await getPublishedCatalogueItem(slug, kind);
+    return item ? { status: "ready", item } : { status: "not-found" };
+  } catch (error) {
+    if (!(error instanceof CatalogueRepositoryError)) throw error;
+    return { status: "unavailable" };
+  }
 }
