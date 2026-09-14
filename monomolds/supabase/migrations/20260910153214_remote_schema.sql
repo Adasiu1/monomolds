@@ -64,7 +64,7 @@ CREATE TABLE "public"."product_images" (
   CONSTRAINT "product_images_pkey" PRIMARY KEY (id),
   CONSTRAINT "product_images_position_check" CHECK (("position" >= 0)),
   CONSTRAINT "product_images_product_id_position_key" UNIQUE (product_id, "position"),
-  CONSTRAINT "product_images_storage_path_check" CHECK ((storage_path ~ '^products/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/]+$'::text)),
+  CONSTRAINT "product_images_storage_path_check" CHECK ((storage_path ~ '^products/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[a-z0-9]+(-[a-z0-9]+)*)/[^/]+$'::text)),
   CONSTRAINT "product_images_storage_path_key" UNIQUE (storage_path)
 );
 
@@ -142,4 +142,3 @@ GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."product_images" TO "anon", "authenticated", "postgres", "service_role";
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."products" TO "anon", "authenticated", "postgres", "service_role";
-
