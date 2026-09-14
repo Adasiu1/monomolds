@@ -84,8 +84,9 @@ test("prices the catalogue merchandise id without a client-provided price", asyn
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.data.quote.items[0].name, "Forma Kokos 100 ml");
-  assert.equal(result.data.quote.items[0].unitPriceGrosze, 5000);
-  assert.equal(result.data.quote.items[0].lineTotalGrosze, 10000);
+  assert.equal(result.data.quote.items[0].unitNetPriceGrosze, 5000);
+  assert.equal(result.data.quote.items[0].unitPriceGrosze, 6150);
+  assert.equal(result.data.quote.items[0].lineTotalGrosze, 12300);
 });
 
 test("prices the catalogue bundle id and preserves its physical quantity", async () => {
@@ -98,7 +99,7 @@ test("prices the catalogue bundle id and preserves its physical quantity", async
   if (!result.ok) return;
   assert.equal(result.data.quote.items[0].name, "Halloween Zestaw");
   assert.equal(result.data.quote.items[0].physicalItemCount, 7);
-  assert.equal(result.data.quote.items[0].lineTotalGrosze, 22500);
+  assert.equal(result.data.quote.items[0].lineTotalGrosze, 27675);
 });
 
 test("rejects delivery details that do not match the quote", async () => {
@@ -142,13 +143,52 @@ test("counts physical moulds, stacks bundle discount with free shipping and allo
   const bundle = quote.items[0];
   assert.equal(quote.physicalItemCount, 6);
   assert.equal(quote.delivery.priceGrosze, 0);
-  assert.equal(bundle.discountGrosze, 1700);
+  assert.equal(bundle.discountGrosze, 2091);
   assert.equal(bundle.components.reduce((sum, component) => sum + component.paidAmountGrosze, 0), bundle.lineTotalGrosze);
   assert.deepEqual(
     quote.adjustments.map((adjustment) => adjustment.type),
     ["bundle_discount", "free_shipping"],
   );
   assert.equal("expiresAt" in quote, false);
+});
+
+test("adds customer-selected gifts without charging for them", async () => {
+  const result = await createCommerceFixtureRepository().quote({
+    items: [{ merchandiseId: "00000000-0000-0000-0000-000000000005", quantity: 12 }],
+    giftItems: [{ merchandiseId: "variant-star", quantity: 1 }],
+    deliveryMethod: "inpost_locker",
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.data.quote.giftPromotion.earnedQuantity, 1);
+  assert.deepEqual(result.data.quote.giftPromotion.selectedItems, [{
+    merchandiseId: "variant-star",
+    name: "Gwiazda",
+    quantity: 1,
+    unitPriceGrosze: 0,
+    lineTotalGrosze: 0,
+  }]);
+  assert.equal(result.data.quote.totalGrosze, 73800);
+});
+
+test("earns three gifts from 24 paid moulds and rejects too many selections", async () => {
+  const repository = createCommerceFixtureRepository();
+  const eligible = await repository.quote({
+    items: [{ merchandiseId: "00000000-0000-0000-0000-000000000005", quantity: 24 }],
+    giftItems: [{ merchandiseId: "variant-heart", quantity: 2 }, { merchandiseId: "variant-star", quantity: 1 }],
+    deliveryMethod: "inpost_locker",
+  });
+  assert.equal(eligible.ok, true);
+  if (eligible.ok) assert.equal(eligible.data.quote.giftPromotion.earnedQuantity, 3);
+
+  const invalid = await repository.quote({
+    items: [{ merchandiseId: "00000000-0000-0000-0000-000000000005", quantity: 12 }],
+    giftItems: [{ merchandiseId: "variant-heart", quantity: 2 }],
+    deliveryMethod: "inpost_locker",
+  });
+  assert.equal(invalid.ok, false);
+  if (!invalid.ok) assert.equal(invalid.error.code, "INVALID_GIFT_SELECTION");
 });
 
 test("makes checkout idempotent while its payment attempt is active", async () => {

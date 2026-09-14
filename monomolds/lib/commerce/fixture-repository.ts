@@ -19,6 +19,7 @@ import {
   PAYMENT_ATTEMPT_VALIDITY_MINUTES,
   PRICING_POLICY_VERSION,
 } from "./contracts";
+import { grossFromNetGrosze } from "@/lib/vat";
 
 type FixtureComponent = {
   merchandiseId: string;
@@ -101,6 +102,16 @@ const FIXTURE_CATALOGUE: Record<string, FixtureMerchandise> = {
   },
 };
 
+const GIFT_OPTIONS = Object.entries(FIXTURE_CATALOGUE)
+  .filter(([, merchandise]) => merchandise.kind === "product" && merchandise.components.length === 1)
+  .map(([merchandiseId, merchandise]) => ({ merchandiseId, name: merchandise.name }));
+
+function earnedGiftQuantity(physicalItemCount: number) {
+  if (physicalItemCount >= 24) return 3;
+  if (physicalItemCount >= 12) return 1;
+  return 0;
+}
+
 function addMinutes(date: Date, minutes: number): string {
   return new Date(date.getTime() + minutes * 60_000).toISOString();
 }
@@ -150,11 +161,17 @@ function priceItems(input: QuoteInput): PriceItemsResult {
       merchandiseId: component.merchandiseId,
       name: component.name,
       quantity: component.quantity * item.quantity,
-      baseAmountGrosze: component.priceGrosze * component.quantity * item.quantity,
+      baseAmountGrosze: grossFromNetGrosze(component.priceGrosze) * component.quantity * item.quantity,
     }));
+    const lineNetSubtotalGrosze = merchandise.components.reduce(
+      (sum, component) => sum + component.priceGrosze * component.quantity * item.quantity,
+      0,
+    );
     const lineSubtotalGrosze = rawComponents.reduce((sum, component) => sum + component.baseAmountGrosze, 0);
     const discountGrosze =
       merchandise.kind === "bundle" ? Math.round((lineSubtotalGrosze * BUNDLE_DISCOUNT_PERCENT) / 100) : 0;
+    const netDiscountGrosze =
+      merchandise.kind === "bundle" ? Math.round((lineNetSubtotalGrosze * BUNDLE_DISCOUNT_PERCENT) / 100) : 0;
     const components = allocateDiscount(rawComponents, discountGrosze);
 
     items.push({
@@ -163,6 +180,7 @@ function priceItems(input: QuoteInput): PriceItemsResult {
       kind: merchandise.kind,
       physicalItemCount: rawComponents.reduce((sum, component) => sum + component.quantity, 0),
       unitPriceGrosze: Math.round(lineSubtotalGrosze / item.quantity),
+      unitNetPriceGrosze: Math.round((lineNetSubtotalGrosze - netDiscountGrosze) / item.quantity),
       lineSubtotalGrosze,
       discountGrosze,
       lineTotalGrosze: lineSubtotalGrosze - discountGrosze,
@@ -173,7 +191,7 @@ function priceItems(input: QuoteInput): PriceItemsResult {
   return { ok: true, items };
 }
 
-type BuildQuoteResult = { ok: true; quote: Quote } | { ok: false; code: "INVALID_CART" | "PRODUCT_NOT_FOUND" };
+type BuildQuoteResult = { ok: true; quote: Quote } | { ok: false; code: "INVALID_CART" | "PRODUCT_NOT_FOUND" | "INVALID_GIFT_SELECTION" };
 
 function buildQuote(input: QuoteInput, now: Date): BuildQuoteResult {
   const priced = priceItems(input);
@@ -181,6 +199,21 @@ function buildQuote(input: QuoteInput, now: Date): BuildQuoteResult {
   const { items } = priced;
 
   const physicalItemCount = items.reduce((sum, item) => sum + item.physicalItemCount, 0);
+  const earnedQuantity = earnedGiftQuantity(physicalItemCount);
+  const giftItems = input.giftItems ?? [];
+  const selectedGiftQuantity = giftItems.reduce((sum, item) => sum + item.quantity, 0);
+  if (
+    selectedGiftQuantity > earnedQuantity ||
+    giftItems.some((item) => !Number.isSafeInteger(item.quantity) || item.quantity < 1 || !GIFT_OPTIONS.some((option) => option.merchandiseId === item.merchandiseId))
+  ) {
+    return { ok: false, code: "INVALID_GIFT_SELECTION" };
+  }
+  const selectedGiftItems = giftItems.map((item) => ({
+    ...item,
+    name: GIFT_OPTIONS.find((option) => option.merchandiseId === item.merchandiseId)!.name,
+    unitPriceGrosze: 0 as const,
+    lineTotalGrosze: 0 as const,
+  }));
   const subtotalGrosze = items.reduce((sum, item) => sum + item.lineSubtotalGrosze, 0);
   const discountGrosze = items.reduce((sum, item) => sum + item.discountGrosze, 0);
   const hasFreeShipping = physicalItemCount >= FREE_SHIPPING_MIN_PHYSICAL_ITEMS;
@@ -202,6 +235,11 @@ function buildQuote(input: QuoteInput, now: Date): BuildQuoteResult {
     currency: "PLN",
     createdAt: now.toISOString(),
     physicalItemCount,
+    giftPromotion: {
+      earnedQuantity,
+      selectedItems: selectedGiftItems,
+      options: GIFT_OPTIONS,
+    },
     pricingPolicyVersion: PRICING_POLICY_VERSION,
     adjustments: [
       ...(discountGrosze > 0
@@ -267,7 +305,11 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
           ok: false,
           error: {
             code: result.code,
-            message: result.code === "PRODUCT_NOT_FOUND" ? "Nie znaleziono produktu." : "Koszyk zawiera nieprawidłowe produkty.",
+            message: result.code === "PRODUCT_NOT_FOUND"
+              ? "Nie znaleziono produktu."
+              : result.code === "INVALID_GIFT_SELECTION"
+                ? "Wybrane gratisy nie pasują do aktualnej promocji."
+                : "Koszyk zawiera nieprawidłowe produkty.",
             retryable: false,
           },
         };
@@ -319,7 +361,11 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
       }
 
       const repricedResult = buildQuote(
-        { items: quote.items.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })), deliveryMethod: quote.delivery.method },
+        {
+          items: quote.items.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })),
+          giftItems: quote.giftPromotion.selectedItems.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })),
+          deliveryMethod: quote.delivery.method,
+        },
         now(),
       );
       if (!repricedResult.ok || repricedResult.quote.totalGrosze !== quote.totalGrosze || repricedResult.quote.pricingPolicyVersion !== quote.pricingPolicyVersion) {
@@ -365,6 +411,7 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
       const repricedResult = buildQuote(
         {
           items: order.quote.items.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })),
+          giftItems: order.quote.giftPromotion.selectedItems.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })),
           deliveryMethod: order.quote.delivery.method,
         },
         now(),

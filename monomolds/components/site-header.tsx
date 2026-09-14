@@ -103,7 +103,6 @@ export function SiteHeader() {
           <PageTransitionLink
             href="/koszyk"
             className="cart-link"
-            aria-label="Koszyk, 0 produktów"
           >
             <BagIcon />
             <span className="hidden sm:inline">Koszyk</span>

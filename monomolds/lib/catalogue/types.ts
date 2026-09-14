@@ -19,6 +19,7 @@ export type CatalogueVariant = {
   id: string;
   name: string;
   priceGrosze: number;
+  netPriceGrosze: number;
   stockQuantity: number;
   available: boolean;
 };
@@ -38,6 +39,7 @@ export type CatalogueOffer = {
   merchandiseId: string;
   label: string | null;
   priceGrosze: number;
+  netPriceGrosze: number;
   currency: "PLN";
   availability: CatalogueOfferAvailability;
 };
@@ -56,6 +58,7 @@ export type CatalogueItem = {
   name: string;
   description: string | null;
   priceGrosze: number;
+  netPriceGrosze: number;
   currency: "PLN";
   available: boolean;
   image: CatalogueImage | null;

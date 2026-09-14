@@ -6,6 +6,7 @@ import { submitGuestCheckout } from "@/app/zamowienie/actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox, TextField } from "@/components/ui/fields";
 import { Notice } from "@/components/ui/feedback";
+import { OrderBenefits } from "@/components/order-benefits";
 import { formatPrice } from "@/lib/format-price";
 import type { DeliveryMethod, Quote } from "@/lib/commerce/contracts";
 
@@ -111,12 +112,14 @@ export function CheckoutForm({ quotes }: CheckoutFormProps) {
       <h2>Podsumowanie</h2>
       <ul className="checkout-summary-items">
         {quote.items.map((item) => <li key={item.merchandiseId}><span>{item.name} <small>× {item.quantity}</small></span><strong>{formatPrice(item.lineTotalGrosze)}</strong></li>)}
+        {quote.giftPromotion.selectedItems.map((item) => <li key={`gift-${item.merchandiseId}`} className="checkout-gift-item"><span>{item.name} <small>× {item.quantity} gratis</small></span><strong>0,00 zł</strong></li>)}
       </ul>
+      <OrderBenefits physicalItemCount={quote.physicalItemCount} />
       <dl>
-        <div><dt>Produkty</dt><dd>{formatPrice(quote.subtotalGrosze)}</dd></div>
+        <div><dt>Produkty brutto</dt><dd>{formatPrice(quote.subtotalGrosze)}</dd></div>
         <div><dt>Rabat</dt><dd>{quote.discountGrosze ? `- ${formatPrice(quote.discountGrosze)}` : "0,00 zł"}</dd></div>
         <div><dt>Dostawa - {deliveryLabel(deliveryMethod)}</dt><dd>{quote.delivery.priceGrosze ? formatPrice(quote.delivery.priceGrosze) : "Bezpłatna"}</dd></div>
-        <div className="checkout-total"><dt>Łącznie</dt><dd>{formatPrice(quote.totalGrosze)}</dd></div>
+        <div className="checkout-total"><dt>Łącznie brutto</dt><dd>{formatPrice(quote.totalGrosze)}</dd></div>
       </dl>
     </aside>
   </div>;

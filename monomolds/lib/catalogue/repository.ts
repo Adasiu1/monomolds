@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cache } from "react";
 
 import type { Database } from "@/types/database";
+import { grossFromNetGrosze } from "@/lib/vat";
 
 import type {
   CatalogueBundleItem,
@@ -122,7 +123,7 @@ function toItem(
     throw new CatalogueRepositoryError();
   }
 
-  const displayPrice = prices.length > 0 ? Math.min(...prices) : product.price!;
+  const netPriceGrosze = prices.length > 0 ? Math.min(...prices) : product.price!;
 
   return {
     id: product.id,
@@ -130,7 +131,8 @@ function toItem(
     kind: product.type,
     name: product.name,
     description: product.description,
-    priceGrosze: displayPrice,
+    priceGrosze: grossFromNetGrosze(netPriceGrosze),
+    netPriceGrosze,
     currency: product.currency,
     // Published moulds remain orderable at zero stock because they are made to order.
     available: true,
@@ -232,6 +234,7 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
       id: variant.id,
       name: variant.name,
       priceGrosze: variant.price!,
+      netPriceGrosze: variant.price!,
       stockQuantity: variant.stock_quantity,
       available: true,
     }));
@@ -260,7 +263,8 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
   const variantOffers: CatalogueOffer[] = variants.map((variant) => ({
     merchandiseId: variant.id,
     label: variant.name,
-    priceGrosze: variant.priceGrosze,
+    priceGrosze: grossFromNetGrosze(variant.netPriceGrosze),
+    netPriceGrosze: variant.netPriceGrosze,
     currency: "PLN",
     availability: !variant.available
       ? { status: "unavailable", fulfilmentDays: null }
@@ -274,6 +278,7 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
         merchandiseId: product.id,
         label: null,
         priceGrosze: item.priceGrosze,
+        netPriceGrosze: item.netPriceGrosze,
         currency: "PLN",
         availability: product.stock_quantity > 0
           ? { status: "in-stock", fulfilmentDays: null }

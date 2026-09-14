@@ -29,7 +29,7 @@ export function ProductCard({ product, action }: { product: ProductCardData; act
         {product.featured ? <span className="ui-featured-badge" aria-label="Produkt polecany"><span aria-hidden="true">★</span> Polecane</span> : null}
       </div>
       <h3>{product.name}</h3>
-      <Price amountGrosze={product.amountGrosze} originalAmountGrosze={product.originalAmountGrosze} lowest30DaysGrosze={product.lowest30DaysGrosze} prefix={product.prefix} />
+      <Price amountGrosze={product.amountGrosze} netAmountGrosze={product.netAmountGrosze} originalAmountGrosze={product.originalAmountGrosze} lowest30DaysGrosze={product.lowest30DaysGrosze} prefix={product.prefix} />
       {product.buySeparatelyGrosze !== undefined && product.buySeparatelyGrosze > product.amountGrosze ? <div className="ui-bundle-saving">
         <p>Kupowane osobno: <del>{formatPrice(product.buySeparatelyGrosze)}</del></p>
         {product.savingsPercent ? <span className="ui-badge">Oszczędzasz {product.savingsPercent}%</span> : null}

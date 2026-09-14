@@ -15,6 +15,7 @@ export function CatalogueCard({ item }: { item: CatalogueItem }) {
         name: item.name,
         href,
         amountGrosze: item.priceGrosze,
+        netAmountGrosze: item.netPriceGrosze,
         prefix: item.priceFrom ? "od" : undefined,
         available: item.available,
         availabilityLabel,

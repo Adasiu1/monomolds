@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { LinkButton, Button } from "@/components/ui/button";
 import { Price } from "@/components/ui/price";
+import { OrderBenefits } from "@/components/order-benefits";
 import { addMerchandiseToCart } from "@/features/cart/cart";
 import type { CatalogueOffer } from "@/lib/catalogue/types";
 
@@ -49,7 +50,7 @@ export function PurchasePanel({ offers, defaultMerchandiseId }: { offers: Catalo
         </fieldset>
       ) : null}
 
-      <Price amountGrosze={offer.priceGrosze} />
+      <Price amountGrosze={offer.priceGrosze} netAmountGrosze={offer.netPriceGrosze} />
       <p className="purchase-availability">
         {offer.availability.status === "in-stock"
           ? "Dostępna od ręki"
@@ -57,6 +58,7 @@ export function PurchasePanel({ offers, defaultMerchandiseId }: { offers: Catalo
             ? `Wykonywana na zamówienie - realizacja do ${offer.availability.fulfilmentDays} dni`
             : "Chwilowo niedostępna"}
       </p>
+      <OrderBenefits />
       <Button
         className="purchase-add-button"
         disabled={offer.availability.status === "unavailable"}

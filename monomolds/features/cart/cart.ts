@@ -1,7 +1,8 @@
-import type { CartItem } from "@/lib/commerce/contracts";
+import type { CartItem, GiftSelection } from "@/lib/commerce/contracts";
 
 export const CART_STORAGE_KEY = "monomolds-guest-cart";
 export const CART_DEMO_SEEDED_KEY = "monomolds-demo-cart-seeded";
+export const CART_GIFTS_STORAGE_KEY = "monomolds-guest-cart-gifts";
 export const MAX_CART_QUANTITY = 99;
 export const EMPTY_CART: CartItem[] = [];
 export const DEMO_CART_ITEMS: CartItem[] = [
@@ -11,6 +12,8 @@ export const DEMO_CART_ITEMS: CartItem[] = [
 
 let cachedStorageValue: string | null | undefined;
 let cachedCartSnapshot: CartItem[] = EMPTY_CART;
+let cachedGiftStorageValue: string | null | undefined;
+let cachedGiftSnapshot: GiftSelection[] = EMPTY_CART;
 
 export function normalizeCartItems(value: unknown): CartItem[] {
   if (!Array.isArray(value)) return [];
@@ -47,6 +50,21 @@ export function cartItemCount(items: CartItem[]): number {
   return items.reduce((total, item) => total + item.quantity, 0);
 }
 
+export function readGiftSnapshot(): GiftSelection[] {
+  if (typeof window === "undefined") return EMPTY_CART;
+
+  const storageValue = window.localStorage.getItem(CART_GIFTS_STORAGE_KEY);
+  if (storageValue === cachedGiftStorageValue) return cachedGiftSnapshot;
+
+  cachedGiftStorageValue = storageValue;
+  try {
+    cachedGiftSnapshot = normalizeCartItems(storageValue ? JSON.parse(storageValue) : []);
+  } catch {
+    cachedGiftSnapshot = EMPTY_CART;
+  }
+  return cachedGiftSnapshot;
+}
+
 export function readCartSnapshot(): CartItem[] {
   if (typeof window === "undefined") return EMPTY_CART;
 
@@ -70,6 +88,18 @@ export function writeCartSnapshot(items: CartItem[]): CartItem[] {
   window.localStorage.setItem(CART_STORAGE_KEY, serialized);
   cachedStorageValue = serialized;
   cachedCartSnapshot = normalized;
+  window.dispatchEvent(new Event("monomolds-cart-change"));
+  return normalized;
+}
+
+export function writeGiftSnapshot(items: GiftSelection[]): GiftSelection[] {
+  const normalized = normalizeCartItems(items);
+  if (typeof window === "undefined") return normalized;
+
+  const serialized = JSON.stringify(normalized);
+  window.localStorage.setItem(CART_GIFTS_STORAGE_KEY, serialized);
+  cachedGiftStorageValue = serialized;
+  cachedGiftSnapshot = normalized;
   window.dispatchEvent(new Event("monomolds-cart-change"));
   return normalized;
 }
