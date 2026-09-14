@@ -44,6 +44,25 @@ export type CartItem = {
   quantity: number;
 };
 
+export type GiftSelection = CartItem;
+
+export type GiftOption = {
+  merchandiseId: string;
+  name: string;
+};
+
+export type PricedGiftItem = GiftSelection & {
+  name: string;
+  unitPriceGrosze: 0;
+  lineTotalGrosze: 0;
+};
+
+export type GiftPromotion = {
+  earnedQuantity: number;
+  selectedItems: PricedGiftItem[];
+  options: GiftOption[];
+};
+
 export type PricedComponent = {
   merchandiseId: string;
   name: string;
@@ -58,6 +77,7 @@ export type PricedCartItem = CartItem & {
   kind: "product" | "bundle";
   physicalItemCount: number;
   unitPriceGrosze: MoneyGrosze;
+  unitNetPriceGrosze: MoneyGrosze;
   lineSubtotalGrosze: MoneyGrosze;
   discountGrosze: MoneyGrosze;
   lineTotalGrosze: MoneyGrosze;
@@ -87,7 +107,8 @@ export const STANDARD_FULFILMENT_DAYS = 7;
 export const LARGE_ORDER_NOTICE_THRESHOLD_ITEMS = 26;
 export const FREE_SHIPPING_MIN_PHYSICAL_ITEMS = 6;
 export const BUNDLE_DISCOUNT_PERCENT = 10;
-export const PRICING_POLICY_VERSION = "mvp-general-promotions-v1";
+export const PRICING_POLICY_VERSION = "mvp-general-promotions-v2";
+export const GIFT_PROMOTION_POLICY_ID = "buy-12-get-1-buy-24-get-3";
 
 /**
  * Deliberately unresolved until physical packing tests are complete.
@@ -108,6 +129,7 @@ export type Quote = {
   currency: Currency;
   createdAt: string;
   physicalItemCount: number;
+  giftPromotion: GiftPromotion;
   pricingPolicyVersion: string;
   adjustments: PricingAdjustment[];
   requiresLeadTimeConfirmation: boolean;
@@ -182,6 +204,7 @@ export type Order = {
   paymentStatus: PaymentStatus;
   guestOrderToken: string;
   items: PricedCartItem[];
+  giftItems: PricedGiftItem[];
   subtotalGrosze: MoneyGrosze;
   discountGrosze: MoneyGrosze;
   shippingGrosze: MoneyGrosze;
@@ -207,11 +230,13 @@ export type ContractResult<Value, Code extends string> =
 
 export type QuoteInput = {
   items: CartItem[];
+  giftItems?: GiftSelection[];
   deliveryMethod: DeliveryMethod;
 };
 
 export type QuoteErrorCode =
   | "INVALID_CART"
+  | "INVALID_GIFT_SELECTION"
   | "PRODUCT_NOT_FOUND"
   | "SHIPPING_CONFIGURATION_PENDING"
   | "PRICING_UNAVAILABLE";

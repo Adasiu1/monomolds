@@ -1,28 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
-import { CART_STORAGE_KEY, cartItemCount, normalizeCartItems } from "./cart";
+import { cartItemCount, readCartSnapshot, readGiftSnapshot, subscribeToCart } from "./cart";
 
 export function CartBadge() {
-  const [count, setCount] = useState(0);
+  const count = useSyncExternalStore(
+    subscribeToCart,
+    () => cartItemCount(readCartSnapshot()) + cartItemCount(readGiftSnapshot()),
+    () => 0,
+  );
 
-  useEffect(() => {
-    const read = () => {
-      try {
-        setCount(cartItemCount(normalizeCartItems(JSON.parse(localStorage.getItem(CART_STORAGE_KEY) ?? "[]"))));
-      } catch {
-        setCount(0);
-      }
-    };
-    read();
-    window.addEventListener("storage", read);
-    window.addEventListener("monomolds-cart-change", read);
-    return () => {
-      window.removeEventListener("storage", read);
-      window.removeEventListener("monomolds-cart-change", read);
-    };
-  }, []);
-
-  return <span className="cart-count" aria-hidden="true">{count}</span>;
+  return <><span className="sr-only sm:hidden">Koszyk</span><span className="cart-count" aria-hidden="true">{count}</span><span className="sr-only">, liczba produktów: {count}</span></>;
 }
