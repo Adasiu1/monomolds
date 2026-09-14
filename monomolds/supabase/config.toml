@@ -116,12 +116,17 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Uncomment to configure local storage buckets
-# [storage.buckets.images]
-# public = false
-# file_size_limit = "50MiB"
-# allowed_mime_types = ["image/png", "image/jpeg"]
-# objects_path = "./images"
+[storage.buckets.product-models]
+public = true
+file_size_limit = "50MiB"
+allowed_mime_types = ["model/gltf-binary", "application/octet-stream"]
+objects_path = "./buckets/product-models"
+
+[storage.buckets.product-images]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/avif"]
+objects_path = "./buckets/product-images"
 
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
