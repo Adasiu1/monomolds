@@ -9,7 +9,7 @@ const DEFAULT_SUPABASE_URL = "https://sviceapzwbnqfdpznvtn.supabase.co";
 const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? DEFAULT_SUPABASE_URL)
   .replace(/\/rest\/v1\/?$/, "")
   .replace(/\/+$/, "");
-const MONKEY_MODEL_URL = `${SUPABASE_URL}/storage/v1/object/public/product-models/products/monkey/monkey.glb`;
+const MONKEY_MODEL_URL = `${SUPABASE_URL}/storage/v1/object/public/product-models/products/Monkey.glb`;
 
 export function HeroMonkey() {
   const mountRef = useRef<HTMLDivElement>(null);
