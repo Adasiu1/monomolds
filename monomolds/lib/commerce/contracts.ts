@@ -128,6 +128,7 @@ export type Quote = {
   totalGrosze: MoneyGrosze;
   currency: Currency;
   createdAt: string;
+  expiresAt: string;
   physicalItemCount: number;
   giftPromotion: GiftPromotion;
   pricingPolicyVersion: string;
@@ -238,6 +239,7 @@ export type QuoteErrorCode =
   | "INVALID_CART"
   | "INVALID_GIFT_SELECTION"
   | "PRODUCT_NOT_FOUND"
+  | "RATE_LIMITED"
   | "SHIPPING_CONFIGURATION_PENDING"
   | "PRICING_UNAVAILABLE";
 
@@ -265,59 +267,65 @@ export type CheckoutDelivery =
 
 export type CheckoutInput = {
   quoteId: string;
+  idempotencyKey: string;
+  guestOrderToken: string;
   customer: CustomerDetails;
   delivery: CheckoutDelivery;
-  /** Required acknowledgement of the store terms immediately before payment. */
+  invoice: InvoiceDetails | null;
+  /** Required acknowledgement of the store terms immediately before order creation. */
   acceptedTerms: boolean;
+  acceptedTermsVersion: string;
   acceptedLeadTimeNoticeVersion?: string;
+};
+
+export type InvoiceDetails = {
+  companyName: string;
+  nip: string;
+  email?: string;
+  address: {
+    line1: string;
+    line2?: string;
+    postalCode: string;
+    city: string;
+    countryCode: "PL";
+  };
 };
 
 export type CheckoutSuccess = {
   orderId: string;
+  orderNumber: string;
   orderDisposition: "created" | "reused";
   orderStatus: "pending_payment";
   guestOrderToken: string;
-  paymentAttemptId: string;
-  paymentProvider: "przelewy24";
-  paymentUrl: string;
-  paymentExpiresAt: string;
+  statusPath: string;
 };
 
 export type CheckoutErrorCode =
   | "INVALID_INPUT"
   | "QUOTE_NOT_FOUND"
+  | "QUOTE_EXPIRED"
   | "QUOTE_CHANGED"
+  | "IDEMPOTENCY_CONFLICT"
   | "LEAD_TIME_NOTICE_REQUIRED"
-  | "PAYMENT_ATTEMPT_EXPIRED"
-  | "PAYMENT_INITIALIZATION_FAILED";
+  | "RATE_LIMITED"
+  | "ORDER_CREATION_FAILED";
 
 export type CheckoutResult = ContractResult<CheckoutSuccess, CheckoutErrorCode>;
 
-export type RetryPaymentInput = {
-  orderId: string;
-  guestOrderToken: string;
+export type CommerceErrorCode = QuoteErrorCode | CheckoutErrorCode;
+
+export type PublicOrderStatus = {
+  orderNumber: string;
+  status: OrderStatus;
+  createdAt: string;
+  items: Array<{ name: string; quantity: number; unitPriceGrosze: number; lineTotalGrosze: number; isGift: boolean }>;
+  delivery: { method: DeliveryMethod; pointId: string | null; city: string | null; priceGrosze: number };
+  totalGrosze: number;
+  currency: Currency;
+  invoiceRequested: boolean;
 };
-
-type RetryPaymentBaseSuccess = Omit<CheckoutSuccess, "orderDisposition">;
-
-export type RetryPaymentSuccess =
-  | (RetryPaymentBaseSuccess & { orderDisposition: "reused"; previousOrderId?: never })
-  | (RetryPaymentBaseSuccess & { orderDisposition: "replaced"; previousOrderId: string });
-
-export type RetryPaymentErrorCode =
-  | "INVALID_INPUT"
-  | "ORDER_NOT_FOUND"
-  | "ORDER_NOT_PAYABLE"
-  | "PAYMENT_ALREADY_CONFIRMED"
-  | "PRICING_UNAVAILABLE"
-  | "PAYMENT_INITIALIZATION_FAILED";
-
-export type RetryPaymentResult = ContractResult<RetryPaymentSuccess, RetryPaymentErrorCode>;
-
-export type CommerceErrorCode = QuoteErrorCode | CheckoutErrorCode | RetryPaymentErrorCode;
 
 export interface CommerceRepository {
   quote(input: QuoteInput): Promise<QuoteResult>;
   checkout(input: CheckoutInput): Promise<CheckoutResult>;
-  retryPayment(input: RetryPaymentInput): Promise<RetryPaymentResult>;
 }

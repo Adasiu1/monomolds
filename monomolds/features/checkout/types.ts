@@ -6,7 +6,9 @@ export type CheckoutFormState = {
   fieldErrors: ContractFieldErrors;
   retryable: boolean;
   refreshSummary: boolean;
-  paymentUrl: string | null;
+  orderNumber: string | null;
+  orderStatus: "pending_payment" | null;
+  statusPath: string | null;
 };
 
 export const initialCheckoutFormState: CheckoutFormState = {
@@ -15,5 +17,7 @@ export const initialCheckoutFormState: CheckoutFormState = {
   fieldErrors: {},
   retryable: false,
   refreshSummary: false,
-  paymentUrl: null,
+  orderNumber: null,
+  orderStatus: null,
+  statusPath: null,
 };

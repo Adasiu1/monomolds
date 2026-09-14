@@ -1,5 +1,6 @@
 import { FooterLogo } from "./footer-logo";
 import { PageTransitionLink } from "./page-transition";
+import { COMMERCE_CONFIG } from "@/lib/commerce/config";
 
 // Each list becomes a footer column. Add future links to the matching group.
 const shopLinks = [
@@ -21,7 +22,8 @@ const legalLinks = [
 ] as const;
 
 const socialLinks = [
-  { href: "https://www.instagram.com/monomolds/", label: "Instagram" },
+  { href: COMMERCE_CONFIG.contact.instagramUrl, label: "Instagram" },
+  { href: `mailto:${COMMERCE_CONFIG.contact.email}`, label: COMMERCE_CONFIG.contact.email },
 ] as const;
 
 type FooterLinkListProps = {
