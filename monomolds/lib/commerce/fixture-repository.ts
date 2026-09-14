@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   CheckoutInput,
   CheckoutResult,
@@ -9,14 +11,11 @@ import type {
   Quote,
   QuoteInput,
   QuoteResult,
-  RetryPaymentInput,
-  RetryPaymentResult,
 } from "./contracts";
 import {
   BUNDLE_DISCOUNT_PERCENT,
   FREE_SHIPPING_MIN_PHYSICAL_ITEMS,
   LARGE_ORDER_NOTICE_THRESHOLD_ITEMS,
-  PAYMENT_ATTEMPT_VALIDITY_MINUTES,
   PRICING_POLICY_VERSION,
 } from "./contracts";
 import { grossFromNetGrosze } from "@/lib/vat";
@@ -39,7 +38,7 @@ type FixtureOrder = {
   success: CheckoutSuccess;
 };
 
-const STANDARD_SHIPPING_GROSZE = 1599;
+const SHIPPING_GROSZE = { inpost_locker: 1649, courier: 1949 } as const;
 
 const FIXTURE_CATALOGUE: Record<string, FixtureMerchandise> = {
   "00000000-0000-0000-0000-000000000020": {
@@ -217,11 +216,11 @@ function buildQuote(input: QuoteInput, now: Date): BuildQuoteResult {
   const subtotalGrosze = items.reduce((sum, item) => sum + item.lineSubtotalGrosze, 0);
   const discountGrosze = items.reduce((sum, item) => sum + item.discountGrosze, 0);
   const hasFreeShipping = physicalItemCount >= FREE_SHIPPING_MIN_PHYSICAL_ITEMS;
-  const shippingGrosze = hasFreeShipping ? 0 : STANDARD_SHIPPING_GROSZE;
+  const shippingGrosze = hasFreeShipping ? 0 : SHIPPING_GROSZE[input.deliveryMethod];
   const requiresLeadTimeConfirmation = physicalItemCount > LARGE_ORDER_NOTICE_THRESHOLD_ITEMS;
 
   return { ok: true, quote: {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     items,
     subtotalGrosze,
     discountGrosze,
@@ -234,6 +233,7 @@ function buildQuote(input: QuoteInput, now: Date): BuildQuoteResult {
     totalGrosze: subtotalGrosze - discountGrosze + shippingGrosze,
     currency: "PLN",
     createdAt: now.toISOString(),
+    expiresAt: addMinutes(now, 15),
     physicalItemCount,
     giftPromotion: {
       earnedQuantity,
@@ -246,7 +246,7 @@ function buildQuote(input: QuoteInput, now: Date): BuildQuoteResult {
         ? [{ type: "bundle_discount", policyId: "bundle-10-percent", amountGrosze: discountGrosze } as const]
         : []),
       ...(hasFreeShipping
-        ? [{ type: "free_shipping", policyId: "free-shipping-from-6-moulds", amountGrosze: STANDARD_SHIPPING_GROSZE } as const]
+        ? [{ type: "free_shipping", policyId: "free-shipping-from-6-moulds", amountGrosze: SHIPPING_GROSZE[input.deliveryMethod] } as const]
         : []),
     ],
     requiresLeadTimeConfirmation,
@@ -281,19 +281,16 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
   const now = options.now ?? (() => new Date());
   const quotes = new Map<string, Quote>();
   const ordersByQuoteId = new Map<string, FixtureOrder>();
-  const ordersById = new Map<string, FixtureOrder>();
 
-  function paymentSuccess(): CheckoutSuccess {
-    const createdAt = now();
+  function checkoutSuccess(guestOrderToken: string): CheckoutSuccess {
+    const orderId = randomUUID();
     return {
-      orderId: crypto.randomUUID(),
+      orderId,
+      orderNumber: "MON-000001",
       orderDisposition: "created",
       orderStatus: "pending_payment",
-      guestOrderToken: crypto.randomUUID(),
-      paymentAttemptId: crypto.randomUUID(),
-      paymentProvider: "przelewy24",
-      paymentUrl: "https://sandbox.przelewy24.pl/fixture-payment",
-      paymentExpiresAt: addMinutes(createdAt, PAYMENT_ATTEMPT_VALIDITY_MINUTES),
+      guestOrderToken,
+      statusPath: `/zamowienie/status?token=${encodeURIComponent(guestOrderToken)}`,
     };
   }
 
@@ -333,6 +330,10 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
         return { ok: false, error: { code: "QUOTE_NOT_FOUND", message: "Nie znaleziono wyceny.", retryable: false } };
       }
 
+      if (Date.parse(quote.expiresAt) <= now().getTime()) {
+        return { ok: false, error: { code: "QUOTE_EXPIRED", message: "Wycena wygasła. Odśwież podsumowanie.", retryable: true } };
+      }
+
       if (input.delivery.method !== quote.delivery.method) {
         return {
           ok: false,
@@ -347,16 +348,6 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
 
       const existingOrder = ordersByQuoteId.get(quote.id);
       if (existingOrder) {
-        if (Date.parse(existingOrder.success.paymentExpiresAt) <= now().getTime()) {
-          return {
-            ok: false,
-            error: {
-              code: "PAYMENT_ATTEMPT_EXPIRED",
-              message: "Czas na płatność minął. Ponów płatność, aby ponownie przeliczyć zamówienie.",
-              retryable: true,
-            },
-          };
-        }
         return { ok: true, data: { ...existingOrder.success, orderDisposition: "reused" } };
       }
 
@@ -386,64 +377,10 @@ export function createCommerceFixtureRepository(options: { now?: () => Date } = 
         };
       }
 
-      const success = paymentSuccess();
+      const success = checkoutSuccess(input.guestOrderToken);
       const order = { quote, success };
       ordersByQuoteId.set(quote.id, order);
-      ordersById.set(success.orderId, order);
       return { ok: true, data: success };
-    },
-
-    async retryPayment(input: RetryPaymentInput): Promise<RetryPaymentResult> {
-      if (!input.orderId || !input.guestOrderToken) {
-        return {
-          ok: false,
-          error: { code: "INVALID_INPUT", message: "Brakuje danych potrzebnych do ponowienia płatności.", retryable: false },
-        };
-      }
-      const order = ordersById.get(input.orderId);
-      if (!order || order.success.guestOrderToken !== input.guestOrderToken) {
-        return { ok: false, error: { code: "ORDER_NOT_FOUND", message: "Nie znaleziono zamówienia.", retryable: false } };
-      }
-      if (Date.parse(order.success.paymentExpiresAt) > now().getTime()) {
-        return { ok: true, data: { ...order.success, orderDisposition: "reused" } };
-      }
-
-      const repricedResult = buildQuote(
-        {
-          items: order.quote.items.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })),
-          giftItems: order.quote.giftPromotion.selectedItems.map(({ merchandiseId, quantity }) => ({ merchandiseId, quantity })),
-          deliveryMethod: order.quote.delivery.method,
-        },
-        now(),
-      );
-      if (!repricedResult.ok) {
-        return {
-          ok: false,
-          error: { code: "PRICING_UNAVAILABLE", message: "Nie udało się ponownie wycenić zamówienia.", retryable: true },
-        };
-      }
-      const { quote: repriced } = repricedResult;
-
-      if (repriced.totalGrosze === order.quote.totalGrosze) {
-        const success = {
-          ...paymentSuccess(),
-          orderId: order.success.orderId,
-          guestOrderToken: order.success.guestOrderToken,
-        };
-        const replacement = { quote: repriced, success };
-        ordersById.set(success.orderId, replacement);
-        ordersByQuoteId.set(order.quote.id, replacement);
-        return { ok: true, data: { ...success, orderDisposition: "reused" } };
-      }
-
-      const success = paymentSuccess();
-      const replacement = { quote: repriced, success };
-      ordersById.set(success.orderId, replacement);
-      ordersByQuoteId.set(repriced.id, replacement);
-      return {
-        ok: true,
-        data: { ...success, orderDisposition: "replaced", previousOrderId: order.success.orderId },
-      };
     },
   } satisfies CommerceRepository;
 

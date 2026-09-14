@@ -1,8 +1,9 @@
 "use server";
 
 import type { CartItem, DeliveryMethod, GiftSelection, QuoteResult } from "@/lib/commerce/contracts";
-import { commerceFixtureRepository } from "@/lib/commerce/fixture-repository";
+import { requestFingerprint } from "@/lib/commerce/request-fingerprint";
+import { createSupabaseCommerceRepository } from "@/lib/commerce/supabase-repository";
 
 export async function repriceCart(items: CartItem[], deliveryMethod: DeliveryMethod, giftItems: GiftSelection[] = []): Promise<QuoteResult> {
-  return commerceFixtureRepository.quote({ items, giftItems, deliveryMethod });
+  return createSupabaseCommerceRepository(await requestFingerprint()).quote({ items, giftItems, deliveryMethod });
 }

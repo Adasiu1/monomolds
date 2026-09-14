@@ -38,7 +38,7 @@ test("supports manual refund processing and retry", () => {
 });
 
 test("fixture implements quote and checkout success contracts", async () => {
-  assert.deepEqual(Object.keys(commerceFixtureRepository).sort(), ["checkout", "quote", "retryPayment"]);
+  assert.deepEqual(Object.keys(commerceFixtureRepository).sort(), ["checkout", "quote"]);
 
   const quoteResult = await commerceFixtureRepository.quote({
     items: [{ merchandiseId: "variant-heart", quantity: 1 }],
@@ -59,7 +59,7 @@ test("fixture implements quote and checkout success contracts", async () => {
   if (checkoutResult.ok) {
     assert.equal(checkoutResult.data.orderStatus, "pending_payment");
     assert.equal(checkoutResult.data.orderDisposition, "created");
-    assert.equal(checkoutResult.data.paymentProvider, "przelewy24");
+    assert.equal(checkoutResult.data.orderNumber, "MON-000001");
   }
 });
 
@@ -149,7 +149,7 @@ test("counts physical moulds, stacks bundle discount with free shipping and allo
     quote.adjustments.map((adjustment) => adjustment.type),
     ["bundle_discount", "free_shipping"],
   );
-  assert.equal("expiresAt" in quote, false);
+  assert.equal(Date.parse(quote.expiresAt) - Date.parse(quote.createdAt), 15 * 60_000);
 });
 
 test("adds customer-selected gifts without charging for them", async () => {
@@ -240,7 +240,7 @@ test("collects all checkout field errors", async () => {
   ]);
 });
 
-test("re-prices and creates a new payment attempt after 15 minutes", async () => {
+test("expires a quote after exactly 15 minutes", async () => {
   let currentTime = new Date("2026-09-10T12:00:00.000Z");
   const repository = createCommerceFixtureRepository({ now: () => new Date(currentTime) });
   const quoteResult = await repository.quote({
@@ -250,25 +250,19 @@ test("re-prices and creates a new payment attempt after 15 minutes", async () =>
   assert.equal(quoteResult.ok, true);
   if (!quoteResult.ok) return;
 
+  currentTime = new Date("2026-09-10T12:15:00.000Z");
   const checkout = await repository.checkout({
     quoteId: quoteResult.data.quote.id,
+    idempotencyKey: "00000000-0000-4000-8000-000000000001",
+    guestOrderToken: "a".repeat(64),
     customer: { email: "anna@example.test", firstName: "Anna", lastName: "Nowak", phone: "+48123123123" },
     delivery: { method: "inpost_locker", pointId: "POZ01A" },
+    invoice: null,
     acceptedTerms: true,
+    acceptedTermsVersion: "mvp-2026-09-14",
   });
-  assert.equal(checkout.ok, true);
-  if (!checkout.ok) return;
-
-  currentTime = new Date("2026-09-10T12:16:00.000Z");
-  const retry = await repository.retryPayment({
-    orderId: checkout.data.orderId,
-    guestOrderToken: checkout.data.guestOrderToken,
-  });
-  assert.equal(retry.ok, true);
-  if (!retry.ok) return;
-  assert.equal(retry.data.orderDisposition, "reused");
-  assert.equal(retry.data.orderId, checkout.data.orderId);
-  assert.notEqual(retry.data.paymentAttemptId, checkout.data.paymentAttemptId);
+  assert.equal(checkout.ok, false);
+  if (!checkout.ok) assert.equal(checkout.error.code, "QUOTE_EXPIRED");
 });
 
 test("maps stable commerce errors to the agreed HTTP statuses", () => {
@@ -276,7 +270,7 @@ test("maps stable commerce errors to the agreed HTTP statuses", () => {
   assert.equal(commerceErrorHttpStatus("QUOTE_NOT_FOUND"), 404);
   assert.equal(commerceErrorHttpStatus("QUOTE_CHANGED"), 409);
   assert.equal(commerceErrorHttpStatus("LEAD_TIME_NOTICE_REQUIRED"), 422);
-  assert.equal(commerceErrorHttpStatus("PAYMENT_INITIALIZATION_FAILED"), 502);
+  assert.equal(commerceErrorHttpStatus("RATE_LIMITED"), 429);
   assert.equal(commerceErrorHttpStatus("PRICING_UNAVAILABLE"), 503);
 });
 
