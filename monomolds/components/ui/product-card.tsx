@@ -17,6 +17,7 @@ export type ProductCardData = PriceProps & {
   capacitiesMl?: number[];
   buySeparatelyGrosze?: number;
   savingsPercent?: number;
+  physicalItemCount?: number;
 };
 
 // One reusable product tile. This card does not fetch data or add items to a cart.
@@ -30,6 +31,7 @@ export function ProductCard({ product, action }: { product: ProductCardData; act
       </div>
       <h3>{product.name}</h3>
       <Price amountGrosze={product.amountGrosze} netAmountGrosze={product.netAmountGrosze} originalAmountGrosze={product.originalAmountGrosze} lowest30DaysGrosze={product.lowest30DaysGrosze} prefix={product.prefix} />
+      {product.physicalItemCount ? <p className="ui-bundle-count">{product.physicalItemCount} foremek w zestawie</p> : null}
       {product.buySeparatelyGrosze !== undefined && product.buySeparatelyGrosze > product.amountGrosze ? <div className="ui-bundle-saving">
         <p>Kupowane osobno: <del>{formatPrice(product.buySeparatelyGrosze)}</del></p>
         {product.savingsPercent ? <span className="ui-badge">Oszczędzasz {product.savingsPercent}%</span> : null}

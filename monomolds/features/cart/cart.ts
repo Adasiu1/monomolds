@@ -3,6 +3,7 @@ import type { CartItem, GiftSelection } from "@/lib/commerce/contracts";
 export const CART_STORAGE_KEY = "monomolds-guest-cart";
 export const CART_DEMO_SEEDED_KEY = "monomolds-demo-cart-seeded";
 export const CART_GIFTS_STORAGE_KEY = "monomolds-guest-cart-gifts";
+export const CART_DISCOUNT_STORAGE_KEY = "monomolds-guest-cart-discount";
 export const MAX_CART_QUANTITY = 99;
 export const EMPTY_CART: CartItem[] = [];
 export const DEMO_CART_ITEMS: CartItem[] = [
@@ -14,6 +15,8 @@ let cachedStorageValue: string | null | undefined;
 let cachedCartSnapshot: CartItem[] = EMPTY_CART;
 let cachedGiftStorageValue: string | null | undefined;
 let cachedGiftSnapshot: GiftSelection[] = EMPTY_CART;
+let cachedDiscountStorageValue: string | null | undefined;
+let cachedDiscountSnapshot = "";
 
 export function normalizeCartItems(value: unknown): CartItem[] {
   if (!Array.isArray(value)) return [];
@@ -80,6 +83,17 @@ export function readCartSnapshot(): CartItem[] {
   return cachedCartSnapshot;
 }
 
+export function readDiscountSnapshot(): string {
+  if (typeof window === "undefined") return "";
+
+  const storageValue = window.localStorage.getItem(CART_DISCOUNT_STORAGE_KEY);
+  if (storageValue === cachedDiscountStorageValue) return cachedDiscountSnapshot;
+
+  cachedDiscountStorageValue = storageValue;
+  cachedDiscountSnapshot = storageValue?.trim().toUpperCase() ?? "";
+  return cachedDiscountSnapshot;
+}
+
 export function writeCartSnapshot(items: CartItem[]): CartItem[] {
   const normalized = normalizeCartItems(items);
   if (typeof window === "undefined") return normalized;
@@ -100,6 +114,18 @@ export function writeGiftSnapshot(items: GiftSelection[]): GiftSelection[] {
   window.localStorage.setItem(CART_GIFTS_STORAGE_KEY, serialized);
   cachedGiftStorageValue = serialized;
   cachedGiftSnapshot = normalized;
+  window.dispatchEvent(new Event("monomolds-cart-change"));
+  return normalized;
+}
+
+export function writeDiscountSnapshot(code: string): string {
+  const normalized = code.trim().toUpperCase();
+  if (typeof window === "undefined") return normalized;
+
+  if (normalized) window.localStorage.setItem(CART_DISCOUNT_STORAGE_KEY, normalized);
+  else window.localStorage.removeItem(CART_DISCOUNT_STORAGE_KEY);
+  cachedDiscountStorageValue = normalized || null;
+  cachedDiscountSnapshot = normalized;
   window.dispatchEvent(new Event("monomolds-cart-change"));
   return normalized;
 }

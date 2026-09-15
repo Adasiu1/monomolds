@@ -6,20 +6,21 @@ import { LinkButton } from "@/components/ui/button";
 import { Notice } from "@/components/ui/feedback";
 import type { DeliveryMethod, Quote } from "@/lib/commerce/contracts";
 import { repriceCart } from "@/features/cart/actions";
-import { EMPTY_CART, readCartSnapshot, readGiftSnapshot, subscribeToCart } from "@/features/cart/cart";
+import { EMPTY_CART, readCartSnapshot, readDiscountSnapshot, readGiftSnapshot, subscribeToCart } from "@/features/cart/cart";
 
 import { CheckoutForm } from "./checkout-form";
 
 export function CheckoutFromCart() {
   const items = useSyncExternalStore(subscribeToCart, readCartSnapshot, () => EMPTY_CART);
   const giftItems = useSyncExternalStore(subscribeToCart, readGiftSnapshot, () => EMPTY_CART);
+  const discountCode = useSyncExternalStore(subscribeToCart, readDiscountSnapshot, () => "");
   const [quotes, setQuotes] = useState<Record<DeliveryMethod, Quote> | null>(null);
   const [error, setError] = useState("");
 
   const loadQuotes = useCallback(async () => {
     if (items.length === 0) return;
     try {
-      const [inpost, courier] = await Promise.all([repriceCart(items, "inpost_locker", giftItems), repriceCart(items, "courier", giftItems)]);
+      const [inpost, courier] = await Promise.all([repriceCart(items, "inpost_locker", giftItems, discountCode), repriceCart(items, "courier", giftItems, discountCode)]);
       if (!inpost.ok || !courier.ok) {
         setError(!inpost.ok ? inpost.error.message : "Nie udało się przygotować wyceny dostawy.");
         return;
@@ -29,12 +30,12 @@ export function CheckoutFromCart() {
     } catch {
       setError("Nie udało się przygotować wyceny zamówienia. Spróbuj ponownie.");
     }
-  }, [giftItems, items]);
+  }, [discountCode, giftItems, items]);
 
   useEffect(() => {
     let cancelled = false;
     if (items.length === 0) return;
-    Promise.all([repriceCart(items, "inpost_locker", giftItems), repriceCart(items, "courier", giftItems)]).then(([inpost, courier]) => {
+    Promise.all([repriceCart(items, "inpost_locker", giftItems, discountCode), repriceCart(items, "courier", giftItems, discountCode)]).then(([inpost, courier]) => {
       if (cancelled) return;
       if (!inpost.ok || !courier.ok) {
         setError(!inpost.ok ? inpost.error.message : "Nie udało się przygotować wyceny dostawy.");
@@ -46,7 +47,7 @@ export function CheckoutFromCart() {
       if (!cancelled) setError("Nie udało się przygotować wyceny zamówienia. Spróbuj ponownie.");
     });
     return () => { cancelled = true; };
-  }, [giftItems, items]);
+  }, [discountCode, giftItems, items]);
 
   useEffect(() => {
     if (!quotes) return;

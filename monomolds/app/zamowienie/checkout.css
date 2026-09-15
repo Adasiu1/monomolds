@@ -37,17 +37,24 @@
 .cart-items { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; }
 .cart-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .85rem 1rem; align-items: center; padding: 1rem; border: 1px solid var(--border); border-radius: .75rem; background: var(--surface); }
 .cart-item h3 { font-size: 1rem; font-weight: 600; }
+.cart-item-meta { margin-top: .3rem; color: var(--muted); font-size: .8rem; }
 .cart-quantity { display: grid; gap: .25rem; color: var(--muted); font-size: .8rem; }
 .cart-quantity-stepper { display: flex; align-items: center; gap: .35rem; }
 .cart-quantity-stepper .ui-icon-button { width: 44px; min-height: 44px; padding: .5rem; font-size: 1.25rem; line-height: 1; }
 .cart-quantity-stepper output { min-width: 2ch; color: var(--foreground); font-size: 1rem; font-variant-numeric: tabular-nums; text-align: center; }
 .cart-item strong { min-width: 4.8rem; font-variant-numeric: tabular-nums; text-align: right; }
 .cart-item-price small { display: block; color: var(--muted); font-size: .72rem; font-weight: 400; line-height: 1.5; }
+.cart-item-price del { display: block; color: var(--muted); font-size: .8rem; font-weight: 400; }
 .cart-summary { display: grid; gap: 1rem; padding: 1.5rem; border: 1px solid var(--border); border-radius: .85rem; background: var(--surface); }
 .cart-summary h2 { font-size: 1.25rem; font-weight: 600; }
 .cart-summary strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
 .cart-summary strong small { color: var(--muted); font-size: .72rem; font-weight: 500; }
 .cart-summary-hint { color: var(--muted); font-size: .8rem; line-height: 1.6; }
+.cart-discount { display: grid; gap: .55rem; padding-block: .25rem; }
+.cart-discount > label { font-size: .85rem; font-weight: 600; }
+.cart-discount > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
+.cart-discount > .ui-button { justify-self: start; }
+.checkout-item-errors { margin: 0; padding-left: 1.25rem; color: var(--danger); font-size: .9rem; line-height: 1.6; }
 .cart-gifts { display: grid; gap: 1.25rem; margin-top: 1rem; padding: 1.25rem; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border)); border-radius: .75rem; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
 .cart-gifts h2 { margin-top: .25rem; font-size: 1.25rem; font-weight: 650; }
 .cart-gifts > div > p:last-child, .cart-gifts-status { margin-top: .45rem; color: var(--muted); font-size: .85rem; line-height: 1.65; }

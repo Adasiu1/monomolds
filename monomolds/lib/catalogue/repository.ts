@@ -104,6 +104,7 @@ function toItem(
   product: ProductRow,
   image: CatalogueImage | null,
   variants: ProductRow[] = [],
+  physicalItemCount = 1,
 ): CatalogueItem {
   const publishedVariants = variants.filter(
     (variant) =>
@@ -123,7 +124,9 @@ function toItem(
     throw new CatalogueRepositoryError();
   }
 
-  const netPriceGrosze = prices.length > 0 ? Math.min(...prices) : product.price!;
+  const baseNetPriceGrosze = prices.length > 0 ? Math.min(...prices) : product.price!;
+  const netPriceGrosze = product.type === "bundle" ? product.bundle_discounted_price! : baseNetPriceGrosze;
+  const baseGrossPriceGrosze = grossFromNetGrosze(baseNetPriceGrosze);
 
   return {
     id: product.id,
@@ -143,8 +146,9 @@ function toItem(
     themes: [],
     capacitiesMl: [],
     priceFrom: publishedVariants.length > 1,
-    buySeparatelyGrosze: null,
-    savingsPercent: null,
+    buySeparatelyGrosze: product.type === "bundle" ? baseGrossPriceGrosze : null,
+    savingsPercent: product.type === "bundle" ? 10 : null,
+    physicalItemCount,
     availability:
       product.type === "bundle"
         ? "available-to-order"
@@ -158,7 +162,7 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   const client = getClient();
   const { data, error } = await client
     .from("products")
-    .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at, product_images(id, storage_path, alt_text, position)")
+    .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at, product_images(id, storage_path, alt_text, position)")
     .eq("status", "published")
     .eq("type", kind)
     .order("created_at", { ascending: false });
@@ -173,7 +177,7 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   if (products.length > 0) {
     const { data: variantData, error: variantError } = await client
       .from("products")
-      .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+      .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
       .eq("status", "published")
       .eq("type", "variant")
       .in("parent_id", products.map((product) => product.id));
@@ -191,8 +195,33 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   }
 
   const images = await makeImages(products);
+  const bundleItemCounts = new Map<string, number>();
+  if (kind === "bundle" && products.length > 0) {
+    const { data: bundleItems, error: bundleItemsError } = await client
+      .from("products")
+      .select("parent_id, bundle_quantity")
+      .eq("status", "published")
+      .eq("type", "bundle_item")
+      .in("parent_id", products.map((product) => product.id));
+    if (bundleItemsError || !bundleItems) {
+      reportDataError("list-bundle-items", bundleItemsError);
+      throw new CatalogueRepositoryError();
+    }
+    for (const bundleItem of bundleItems) {
+      if (!bundleItem.parent_id) continue;
+      bundleItemCounts.set(
+        bundleItem.parent_id,
+        (bundleItemCounts.get(bundleItem.parent_id) ?? 0) + (bundleItem.bundle_quantity ?? 1),
+      );
+    }
+  }
   return products.map((product) =>
-    toItem(product, images.get(product.id)?.[0] ?? null, variantsByParent.get(product.id) ?? []),
+    toItem(
+      product,
+      images.get(product.id)?.[0] ?? null,
+      variantsByParent.get(product.id) ?? [],
+      product.type === "bundle" ? (bundleItemCounts.get(product.id) ?? 0) : 1,
+    ),
   );
 }
 
@@ -200,7 +229,7 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
   const client = getClient();
   const { data, error } = await client
     .from("products")
-    .select("id, slug, name, description, price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at, product_images(id, storage_path, alt_text, position), product_details(capacity_ml, material, care_instructions, model_storage_path, model_alt_text, product_id)")
+    .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at, product_images(id, storage_path, alt_text, position), product_details(capacity_ml, material, care_instructions, model_storage_path, model_alt_text, product_id)")
     .eq("status", "published")
     .eq("type", kind)
     .eq("slug", slug)
@@ -215,7 +244,7 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
   const product = data as ProductWithRelations;
   const { data: childData, error: childError } = await client
     .from("products")
-    .select("id, slug, name, description, price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+    .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
     .eq("parent_id", product.id)
     .eq("status", "published")
     .in("type", ["variant", "bundle_item"]);
@@ -226,8 +255,36 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
   }
 
   const children = childData as ProductRow[];
-  const images = (await makeImages([product])).get(product.id) ?? [];
-  const item = toItem(product, images[0] ?? null, children);
+  const bundleProductIds = children.flatMap((child) => child.type === "bundle_item" && child.bundle_product_id ? [child.bundle_product_id] : []);
+  const [imageMap, bundleProductsResponse] = await Promise.all([
+    makeImages([product]),
+    bundleProductIds.length > 0
+      ? client.from("products")
+        .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+        .eq("status", "published")
+        .in("id", bundleProductIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (bundleProductsResponse.error || !bundleProductsResponse.data) {
+    reportDataError("get-bundle-products", bundleProductsResponse.error);
+    throw new CatalogueRepositoryError();
+  }
+  const bundleProductRows = bundleProductsResponse.data as ProductRow[];
+  const bundleProducts = new Map(bundleProductRows.map((linked) => [linked.id, linked]));
+  const variantParentIds = bundleProductRows.flatMap((linked) => linked.type === "variant" && linked.parent_id ? [linked.parent_id] : []);
+  const { data: variantParents, error: variantParentsError } = variantParentIds.length > 0
+    ? await client.from("products").select("id, slug").eq("status", "published").eq("type", "product").in("id", variantParentIds)
+    : { data: [], error: null };
+  if (variantParentsError || !variantParents) {
+    reportDataError("get-bundle-product-parents", variantParentsError);
+    throw new CatalogueRepositoryError();
+  }
+  const productSlugs = new Map(variantParents.flatMap((parent) => parent.slug ? [[parent.id, parent.slug] as const] : []));
+  const images = imageMap.get(product.id) ?? [];
+  const bundlePhysicalItemCount = children
+    .filter((child) => child.type === "bundle_item" && child.status === "published")
+    .reduce((sum, child) => sum + (child.bundle_quantity ?? 1), 0);
+  const item = toItem(product, images[0] ?? null, children, product.type === "bundle" ? bundlePhysicalItemCount : 1);
   const variants: CatalogueVariant[] = children
     .filter((variant) => variant.type === "variant" && variant.status === "published" && variant.price !== null)
     .map((variant) => ({
@@ -240,7 +297,25 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
     }));
   const bundleItems: CatalogueBundleItem[] = children
     .filter((bundleItem) => bundleItem.type === "bundle_item" && bundleItem.status === "published")
-    .map((bundleItem) => ({ id: bundleItem.id, name: bundleItem.name, quantity: bundleItem.bundle_quantity ?? 1 }));
+    .map((bundleItem) => {
+      const linked = bundleItem.bundle_product_id ? bundleProducts.get(bundleItem.bundle_product_id) : null;
+      const productSlug = linked?.type === "product" ? linked.slug : linked?.parent_id ? productSlugs.get(linked.parent_id) : null;
+      if (!linked || !productSlug || linked.price === null || (linked.type !== "product" && linked.type !== "variant")) {
+        console.error("Published bundle contains an invalid product reference.", { bundleId: product.id, bundleItemId: bundleItem.id });
+        throw new CatalogueRepositoryError();
+      }
+      const quantity = bundleItem.bundle_quantity ?? 1;
+      const unitPriceGrosze = grossFromNetGrosze(linked.price);
+      return {
+        id: bundleItem.id,
+        merchandiseId: linked.id,
+        productSlug,
+        name: linked.name,
+        quantity,
+        unitPriceGrosze,
+        linePriceGrosze: unitPriceGrosze * quantity,
+      };
+    });
 
   const details = Array.isArray(product.product_details)
     ? product.product_details[0] ?? null
@@ -266,6 +341,7 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
     priceGrosze: grossFromNetGrosze(variant.netPriceGrosze),
     netPriceGrosze: variant.netPriceGrosze,
     currency: "PLN",
+    originalPriceGrosze: null,
     availability: !variant.available
       ? { status: "unavailable", fulfilmentDays: null }
       : variant.stockQuantity > 0
@@ -280,6 +356,7 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
         priceGrosze: item.priceGrosze,
         netPriceGrosze: item.netPriceGrosze,
         currency: "PLN",
+        originalPriceGrosze: item.buySeparatelyGrosze,
         availability: product.stock_quantity > 0
           ? { status: "in-stock", fulfilmentDays: null }
           : { status: "made-to-order", fulfilmentDays: STANDARD_FULFILMENT_DAYS },

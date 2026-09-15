@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   commerceFixtureRepository,
   createCommerceFixtureRepository,
+  FIXTURE_CATALOGUE,
 } from "../lib/commerce/fixture-repository.ts";
 import { commerceErrorHttpStatus } from "../lib/commerce/http-status.ts";
 import {
@@ -124,7 +125,7 @@ test("prices the catalogue merchandise id without a client-provided price", asyn
   assert.equal(result.data.quote.items[0].lineTotalGrosze, 12300);
 });
 
-test("prices the catalogue bundle id and preserves its physical quantity", async () => {
+test("derives a bundle price from its components and preserves its physical quantity", async () => {
   const result = await createCommerceFixtureRepository().quote({
     items: [{ merchandiseId: "00000000-0000-0000-0000-000000000020", quantity: 1 }],
     deliveryMethod: "inpost_locker",
@@ -134,7 +135,95 @@ test("prices the catalogue bundle id and preserves its physical quantity", async
   if (!result.ok) return;
   assert.equal(result.data.quote.items[0].name, "Halloween Zestaw");
   assert.equal(result.data.quote.items[0].physicalItemCount, 7);
-  assert.equal(result.data.quote.items[0].lineTotalGrosze, 27675);
+  assert.equal(result.data.quote.items[0].lineSubtotalGrosze, 41820);
+  assert.equal(result.data.quote.items[0].discountGrosze, 4182);
+  assert.equal(result.data.quote.items[0].lineTotalGrosze, 37638);
+});
+
+test("merges duplicate merchandise, caps the merged quantity and ignores client prices", async () => {
+  const repository = createCommerceFixtureRepository();
+  const result = await repository.quote({
+    items: [
+      { merchandiseId: "variant-heart", quantity: 2, price: 1, amount: 1 },
+      { merchandiseId: "variant-heart", quantity: 3, price: 1, amount: 1 },
+    ],
+    deliveryMethod: "inpost_locker",
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.data.quote.items.length, 1);
+    assert.equal(result.data.quote.items[0].quantity, 5);
+    assert.equal(result.data.quote.items[0].lineTotalGrosze, 27675);
+    assert.equal("price" in result.data.quote.items[0], false);
+  }
+
+  const tooMany = await repository.quote({
+    items: [{ merchandiseId: "variant-heart", quantity: 60 }, { merchandiseId: "variant-heart", quantity: 40 }],
+    deliveryMethod: "inpost_locker",
+  });
+  assert.equal(tooMany.ok, false);
+  if (!tooMany.ok) assert.equal(tooMany.error.code, "INVALID_CART");
+});
+
+test("normalizes and applies an active percentage code after the bundle discount", async () => {
+  const repository = createCommerceFixtureRepository({ discounts: [{ code: "JESIEN10", percentage: 10 }] });
+  const result = await repository.quote({
+    items: [{ merchandiseId: "bundle-four", quantity: 1 }],
+    deliveryMethod: "inpost_locker",
+    discountCode: "  jesien10 ",
+  });
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.data.quote.appliedDiscount, {
+    code: "JESIEN10",
+    type: "percentage",
+    percentage: 10,
+    amountGrosze: 1882,
+    ruleVersion: "percentage-whole-cart-v1",
+  });
+  assert.equal(result.data.quote.discountGrosze, 3973);
+  assert.equal(result.data.quote.items[0].components.reduce((sum, component) => sum + component.paidAmountGrosze, 0), result.data.quote.items[0].lineTotalGrosze);
+});
+
+test("validates discount dates and minimum subtotal", async () => {
+  const now = new Date("2026-09-15T12:00:00.000Z");
+  const base = { now: () => now };
+  const notStarted = await createCommerceFixtureRepository({ ...base, discounts: [{ code: "LATER", percentage: 10, validFrom: "2026-09-16T00:00:00.000Z" }] }).quote({
+    items: [{ merchandiseId: "variant-heart", quantity: 1 }], deliveryMethod: "inpost_locker", discountCode: "LATER",
+  });
+  assert.equal(notStarted.ok, false);
+  if (!notStarted.ok) assert.equal(notStarted.error.code, "DISCOUNT_NOT_STARTED");
+
+  const expired = await createCommerceFixtureRepository({ ...base, discounts: [{ code: "OLD", percentage: 10, validUntil: now.toISOString() }] }).quote({
+    items: [{ merchandiseId: "variant-heart", quantity: 1 }], deliveryMethod: "inpost_locker", discountCode: "OLD",
+  });
+  assert.equal(expired.ok, false);
+  if (!expired.ok) assert.equal(expired.error.code, "DISCOUNT_EXPIRED");
+
+  const belowMinimum = await createCommerceFixtureRepository({ ...base, discounts: [{ code: "BIG", percentage: 10, minSubtotalGrosze: 10000 }] }).quote({
+    items: [{ merchandiseId: "variant-heart", quantity: 1 }], deliveryMethod: "inpost_locker", discountCode: "BIG",
+  });
+  assert.equal(belowMinimum.ok, false);
+  if (!belowMinimum.ok) assert.equal(belowMinimum.error.code, "DISCOUNT_MIN_SUBTOTAL");
+});
+
+test("returns a concrete item error when catalogue pricing changes after quote", async () => {
+  const catalogue = structuredClone(FIXTURE_CATALOGUE);
+  const repository = createCommerceFixtureRepository({ catalogue });
+  const quoted = await repository.quote({ items: [{ merchandiseId: "variant-heart", quantity: 1 }], deliveryMethod: "inpost_locker" });
+  assert.equal(quoted.ok, true);
+  if (!quoted.ok) return;
+  catalogue["variant-heart"].components[0].priceGrosze = 5000;
+  const result = await repository.checkout({
+    quoteId: quoted.data.quote.id,
+    customer: { email: "anna@example.test", firstName: "Anna", lastName: "Nowak", phone: "+48123123123" },
+    delivery: { method: "inpost_locker", pointId: "POZ01A" },
+    acceptedTerms: true,
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.deepEqual(result.error.itemErrors, [{
+    merchandiseId: "variant-heart", reason: "PRICE_CHANGED", requestedQuantity: 1,
+  }]);
 });
 
 test("rejects delivery details that do not match the quote", async () => {

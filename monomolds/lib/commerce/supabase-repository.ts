@@ -10,6 +10,7 @@ import type {
   CheckoutResult,
   CheckoutSuccess,
   CommerceRepository,
+  ItemError,
   PublicOrderStatus,
   Quote,
   QuoteErrorCode,
@@ -39,13 +40,18 @@ function stableJson(value: unknown): string {
 }
 
 function rpcCode(message: string) {
-  return message.match(/(INVALID_CART|INVALID_GIFT_SELECTION|PRODUCT_NOT_FOUND|INVALID_INPUT|QUOTE_NOT_FOUND|QUOTE_EXPIRED|QUOTE_CHANGED|IDEMPOTENCY_CONFLICT|LEAD_TIME_NOTICE_REQUIRED|RATE_LIMITED|ORDER_NOT_FOUND)/)?.[1];
+  return message.match(/(INVALID_CART|INVALID_GIFT_SELECTION|PRODUCT_NOT_FOUND|DISCOUNT_NOT_FOUND|DISCOUNT_INACTIVE|DISCOUNT_NOT_STARTED|DISCOUNT_EXPIRED|DISCOUNT_MIN_SUBTOTAL|DISCOUNT_USAGE_LIMIT|INVALID_INPUT|QUOTE_NOT_FOUND|QUOTE_EXPIRED|QUOTE_CHANGED|IDEMPOTENCY_CONFLICT|LEAD_TIME_NOTICE_REQUIRED|RATE_LIMITED|ORDER_NOT_FOUND)/)?.[1];
 }
 
 const quoteMessages: Record<QuoteErrorCode, string> = {
   INVALID_CART: "Koszyk zawiera nieprawidłowe pozycje.",
   INVALID_GIFT_SELECTION: "Wybrane gratisy nie pasują do aktualnej promocji.",
   PRODUCT_NOT_FOUND: "Produkt jest niedostępny lub nie istnieje.",
+  DISCOUNT_NOT_FOUND: "Nie znaleziono podanego kodu rabatowego.",
+  DISCOUNT_INACTIVE: "Ten kod rabatowy jest nieaktywny.",
+  DISCOUNT_NOT_STARTED: "Ten kod rabatowy nie jest jeszcze aktywny.",
+  DISCOUNT_EXPIRED: "Ten kod rabatowy wygasł.",
+  DISCOUNT_MIN_SUBTOTAL: "Wartość produktów jest zbyt niska dla tego kodu rabatowego.",
   RATE_LIMITED: "Wysłano zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.",
   SHIPPING_CONFIGURATION_PENDING: "Dostawa nie jest jeszcze dostępna dla tego zamówienia.",
   PRICING_UNAVAILABLE: "Nie udało się przygotować aktualnej wyceny.",
@@ -56,8 +62,14 @@ const checkoutMessages: Record<CheckoutErrorCode, string> = {
   QUOTE_NOT_FOUND: "Nie znaleziono aktualnej wyceny. Odśwież podsumowanie.",
   QUOTE_EXPIRED: "Wycena wygasła. Odśwież podsumowanie i zaakceptuj aktualną kwotę.",
   QUOTE_CHANGED: "Cena, dostępność lub dostawa uległa zmianie. Sprawdź nowe podsumowanie.",
+  DISCOUNT_NOT_FOUND: quoteMessages.DISCOUNT_NOT_FOUND,
+  DISCOUNT_INACTIVE: quoteMessages.DISCOUNT_INACTIVE,
+  DISCOUNT_NOT_STARTED: quoteMessages.DISCOUNT_NOT_STARTED,
+  DISCOUNT_EXPIRED: quoteMessages.DISCOUNT_EXPIRED,
+  DISCOUNT_MIN_SUBTOTAL: quoteMessages.DISCOUNT_MIN_SUBTOTAL,
   IDEMPOTENCY_CONFLICT: "Ta próba zamówienia zawiera inne dane. Odśwież podsumowanie i spróbuj ponownie.",
   LEAD_TIME_NOTICE_REQUIRED: "Potwierdź informację o wydłużonym terminie realizacji.",
+  DISCOUNT_USAGE_LIMIT: "Ten kod rabatowy został już wykorzystany dla podanego adresu e-mail.",
   RATE_LIMITED: "Wysłano zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.",
   ORDER_CREATION_FAILED: "Nie udało się bezpiecznie zapisać zamówienia. Spróbuj ponownie.",
 };
@@ -71,6 +83,7 @@ export function createSupabaseCommerceRepository(requestFingerprint: string): Co
           p_items: input.items as unknown as Json,
           p_gifts: (input.giftItems ?? []) as unknown as Json,
           p_delivery_method: input.deliveryMethod,
+          p_discount_code: input.discountCode?.trim().toUpperCase() ?? "",
           p_request_fingerprint: requestFingerprint,
         });
       } catch {
@@ -115,7 +128,19 @@ export function createSupabaseCommerceRepository(requestFingerprint: string): Co
         const found = rpcCode(error?.message ?? "") as CheckoutErrorCode | undefined;
         const code = found && found in checkoutMessages ? found : "ORDER_CREATION_FAILED";
         console.error("Checkout RPC failed.", { code: error?.code ?? "unknown", checkoutCode: code });
-        return { ok: false, error: { code, message: checkoutMessages[code], retryable: code === "RATE_LIMITED" || code === "ORDER_CREATION_FAILED" } };
+        let itemErrors: ItemError[] | undefined;
+        try {
+          const detail = error?.details ? JSON.parse(error.details) as { itemErrors?: ItemError[] } : null;
+          if (Array.isArray(detail?.itemErrors)) itemErrors = detail.itemErrors;
+        } catch {
+          // Malformed database diagnostics are intentionally not exposed to the client.
+        }
+        return { ok: false, error: {
+          code,
+          message: checkoutMessages[code],
+          retryable: code === "RATE_LIMITED" || code === "ORDER_CREATION_FAILED",
+          ...(itemErrors ? { itemErrors } : {}),
+        } };
       }
       const result = data as Omit<CheckoutSuccess, "guestOrderToken" | "statusPath">;
       return { ok: true, data: {

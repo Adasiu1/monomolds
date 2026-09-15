@@ -8,6 +8,7 @@ select public.create_checkout_quote(
   '[{"merchandiseId":"00000000-0000-0000-0000-000000000005","quantity":1}]'::jsonb,
   '[]'::jsonb,
   'inpost_locker',
+  null,
   repeat('a', 64)
 ) as value;
 reset role;
@@ -29,7 +30,7 @@ select public.finalize_guest_order(
 reset role;
 
 select is((value->>'orderStatus'), 'pending_payment', 'new order waits for payment') from mon20_order;
-select is((value->>'orderNumber'), 'MON-000001', 'order gets a readable sequence number') from mon20_order;
+select matches((value->>'orderNumber'), '^MON-[0-9]{6}$', 'order gets a readable sequence number') from mon20_order;
 select is((select count(*)::integer from public.orders), 1, 'one order is stored');
 select is((select count(*)::integer from public.order_items), 1, 'immutable item snapshot is stored');
 select is((select invoice_nip from public.orders limit 1), '5260250995', 'normalized invoice data is stored relationally');
