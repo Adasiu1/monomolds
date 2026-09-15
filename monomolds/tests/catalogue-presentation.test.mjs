@@ -25,6 +25,7 @@ function item(overrides) {
     priceFrom: false,
     buySeparatelyGrosze: null,
     savingsPercent: null,
+    physicalItemCount: 1,
     availability: "made-to-order",
   };
 }

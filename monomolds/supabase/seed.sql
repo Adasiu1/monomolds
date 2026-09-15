@@ -4,8 +4,10 @@ values
   ('00000000-0000-0000-0000-000000000002', 'product', 'forma-mis-130-ml', 'Forma Miś 130 ml', 'Forma silikonowa Miś o pojemności 130 ml.', 6000, 'PLN', 0, 'published'),
   ('00000000-0000-0000-0000-000000000003', 'product', 'forma-dracula-100-ml', 'Forma Dracula 100 ml', 'Forma silikonowa Dracula o pojemności 100 ml.', 5000, 'PLN', 0, 'published'),
   ('00000000-0000-0000-0000-000000000005', 'product', 'forma-kokos-100-ml', 'Forma Kokos 100 ml', 'Forma silikonowa o pojemności 100 ml z wyraźną fakturą kokosa.', 5000, 'PLN', 0, 'published'),
+  ('00000000-0000-0000-0000-000000000006', 'product', 'forma-serce-100-ml', 'Forma Serce 100 ml', 'Forma silikonowa Serce o pojemności 100 ml.', 4000, 'PLN', 0, 'published'),
   ('00000000-0000-0000-0000-000000000004', 'product', 'secret-monkey', 'Secret Monkey', 'Produkt tylko do testowania RLS.', 9999, 'PLN', 5, 'draft'),
-  ('00000000-0000-0000-0000-000000000020', 'bundle', 'halloween-set', 'Halloween Zestaw', 'Zestaw siedmiu form.', 22500, 'PLN', 5, 'published')
+  ('00000000-0000-0000-0000-000000000020', 'bundle', 'halloween-set', 'Halloween Zestaw', 'Zestaw siedmiu form.', null, 'PLN', 5, 'published'),
+  ('00000000-0000-0000-0000-000000000030', 'bundle', 'zestaw-test', 'Zestaw test', 'Po jednej sztuce każdej formy dostępnej w katalogu.', null, 'PLN', 5, 'published')
 on conflict (id) do update
 set
   type = excluded.type,
@@ -31,16 +33,22 @@ set
   stock_quantity = excluded.stock_quantity,
   status = excluded.status;
 
-insert into public.products (id, parent_id, type, name, status, bundle_quantity)
+insert into public.products (id, parent_id, type, name, status, bundle_product_id, bundle_quantity)
 values
-  ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Forma Małpka 100 ml', 'published', 6),
-  ('00000000-0000-0000-0000-000000000022', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Forma Serce 100 ml', 'published', 1)
+  ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Forma Małpka 100 ml', 'published', '00000000-0000-0000-0000-000000000001', 6),
+  ('00000000-0000-0000-0000-000000000022', '00000000-0000-0000-0000-000000000020', 'bundle_item', 'Forma Serce 100 ml', 'published', '00000000-0000-0000-0000-000000000006', 1),
+  ('00000000-0000-0000-0000-000000000031', '00000000-0000-0000-0000-000000000030', 'bundle_item', 'Forma Małpka 100 ml', 'published', '00000000-0000-0000-0000-000000000001', 1),
+  ('00000000-0000-0000-0000-000000000032', '00000000-0000-0000-0000-000000000030', 'bundle_item', 'Forma Miś 130 ml', 'published', '00000000-0000-0000-0000-000000000002', 1),
+  ('00000000-0000-0000-0000-000000000033', '00000000-0000-0000-0000-000000000030', 'bundle_item', 'Forma Dracula 100 ml', 'published', '00000000-0000-0000-0000-000000000003', 1),
+  ('00000000-0000-0000-0000-000000000034', '00000000-0000-0000-0000-000000000030', 'bundle_item', 'Forma Kokos 100 ml', 'published', '00000000-0000-0000-0000-000000000005', 1),
+  ('00000000-0000-0000-0000-000000000035', '00000000-0000-0000-0000-000000000030', 'bundle_item', 'Forma Serce 100 ml', 'published', '00000000-0000-0000-0000-000000000006', 1)
 on conflict (id) do update
 set
   parent_id = excluded.parent_id,
   type = excluded.type,
   name = excluded.name,
   status = excluded.status,
+  bundle_product_id = excluded.bundle_product_id,
   bundle_quantity = excluded.bundle_quantity;
 
 insert into public.product_details (product_id, capacity_ml, material, care_instructions, model_storage_path, model_alt_text)

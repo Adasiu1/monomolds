@@ -1,5 +1,8 @@
+import Link from "next/link";
+
 import { ProductGallery } from "@/components/catalogue/product-gallery";
 import { PurchasePanel } from "@/components/catalogue/purchase-panel";
+import { formatPrice } from "@/lib/format-price";
 import type { CatalogueDetail } from "@/lib/catalogue/types";
 
 export function CatalogueDetailView({ item }: { item: CatalogueDetail }) {
@@ -42,7 +45,12 @@ export function CatalogueDetailView({ item }: { item: CatalogueDetail }) {
               {item.bundleItems.length > 0 ? (
                 <ul className="bundle-contents">
                   {item.bundleItems.map((bundleItem) => (
-                    <li key={bundleItem.id}><span>{bundleItem.name}</span><strong>{bundleItem.quantity} szt.</strong></li>
+                    <li key={bundleItem.id}>
+                      <Link href={`/sklep/${bundleItem.productSlug}`}>
+                        <span>{bundleItem.name} <small>{formatPrice(bundleItem.unitPriceGrosze)} za szt.</small></span>
+                        <strong>{bundleItem.quantity} szt. - {formatPrice(bundleItem.linePriceGrosze)}</strong>
+                      </Link>
+                    </li>
                   ))}
                 </ul>
               ) : (

@@ -23,6 +23,7 @@ export function CatalogueCard({ item }: { item: CatalogueItem }) {
         capacitiesMl: item.capacitiesMl,
         buySeparatelyGrosze: item.buySeparatelyGrosze ?? undefined,
         savingsPercent: item.savingsPercent ?? undefined,
+        physicalItemCount: item.kind === "bundle" ? item.physicalItemCount : undefined,
         image: item.image ? { src: item.image.url, alt: item.image.alt } : undefined,
       }}
     />

@@ -86,9 +86,17 @@ export type PricedCartItem = CartItem & {
 };
 
 export type PricingAdjustment = {
-  type: "bundle_discount" | "free_shipping";
-  policyId: "bundle-10-percent" | "free-shipping-from-6-moulds";
+  type: "bundle_discount" | "code_discount" | "free_shipping";
+  policyId: "bundle-10-percent" | "percentage-whole-cart-v1" | "free-shipping-from-6-moulds";
   amountGrosze: MoneyGrosze;
+};
+
+export type AppliedDiscount = {
+  code: string;
+  type: "percentage";
+  percentage: number;
+  amountGrosze: MoneyGrosze;
+  ruleVersion: "percentage-whole-cart-v1";
 };
 
 export type ParcelSize = "S" | "M" | "L";
@@ -133,6 +141,7 @@ export type Quote = {
   giftPromotion: GiftPromotion;
   pricingPolicyVersion: string;
   adjustments: PricingAdjustment[];
+  appliedDiscount: AppliedDiscount | null;
   requiresLeadTimeConfirmation: boolean;
   leadTimeNotice: string | null;
   leadTimeNoticeVersion: string | null;
@@ -216,6 +225,13 @@ export type Order = {
 
 export type ContractFieldErrors = Record<string, string[]>;
 
+export type ItemError = {
+  merchandiseId: string;
+  reason: "NOT_FOUND" | "UNAVAILABLE" | "PRICE_CHANGED" | "QUANTITY_INVALID";
+  requestedQuantity: number;
+  currentQuantity?: number;
+};
+
 export type ContractError<Code extends string> = {
   code: Code;
   message: string;
@@ -223,6 +239,7 @@ export type ContractError<Code extends string> = {
   /** Safe correlation identifier; present for infrastructure/provider failures. */
   requestId?: string;
   fieldErrors?: ContractFieldErrors;
+  itemErrors?: ItemError[];
 };
 
 export type ContractResult<Value, Code extends string> =
@@ -233,12 +250,18 @@ export type QuoteInput = {
   items: CartItem[];
   giftItems?: GiftSelection[];
   deliveryMethod: DeliveryMethod;
+  discountCode?: string;
 };
 
 export type QuoteErrorCode =
   | "INVALID_CART"
   | "INVALID_GIFT_SELECTION"
   | "PRODUCT_NOT_FOUND"
+  | "DISCOUNT_NOT_FOUND"
+  | "DISCOUNT_INACTIVE"
+  | "DISCOUNT_NOT_STARTED"
+  | "DISCOUNT_EXPIRED"
+  | "DISCOUNT_MIN_SUBTOTAL"
   | "RATE_LIMITED"
   | "SHIPPING_CONFIGURATION_PENDING"
   | "PRICING_UNAVAILABLE";
@@ -305,8 +328,14 @@ export type CheckoutErrorCode =
   | "QUOTE_NOT_FOUND"
   | "QUOTE_EXPIRED"
   | "QUOTE_CHANGED"
+  | "DISCOUNT_NOT_FOUND"
+  | "DISCOUNT_INACTIVE"
+  | "DISCOUNT_NOT_STARTED"
+  | "DISCOUNT_EXPIRED"
+  | "DISCOUNT_MIN_SUBTOTAL"
   | "IDEMPOTENCY_CONFLICT"
   | "LEAD_TIME_NOTICE_REQUIRED"
+  | "DISCOUNT_USAGE_LIMIT"
   | "RATE_LIMITED"
   | "ORDER_CREATION_FAILED";
 

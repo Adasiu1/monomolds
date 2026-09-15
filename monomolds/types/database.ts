@@ -39,6 +39,7 @@ export type Database = {
           consumed_at: string | null
           created_at: string
           delivery_method: string
+          discount_code: string | null
           expires_at: string
           id: string
           input_gifts: Json
@@ -49,6 +50,7 @@ export type Database = {
           consumed_at?: string | null
           created_at?: string
           delivery_method: string
+          discount_code?: string | null
           expires_at: string
           id?: string
           input_gifts?: Json
@@ -59,6 +61,7 @@ export type Database = {
           consumed_at?: string | null
           created_at?: string
           delivery_method?: string
+          discount_code?: string | null
           expires_at?: string
           id?: string
           input_gifts?: Json
@@ -133,13 +136,65 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_redemptions: {
+        Row: {
+          consumed_at: string | null
+          discount_id: string
+          id: string
+          normalized_email: string
+          order_id: string
+          released_at: string | null
+          reserved_at: string
+          state: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          discount_id: string
+          id?: string
+          normalized_email: string
+          order_id: string
+          released_at?: string | null
+          reserved_at?: string
+          state: string
+        }
+        Update: {
+          consumed_at?: string | null
+          discount_id?: string
+          id?: string
+          normalized_email?: string
+          order_id?: string
+          released_at?: string | null
+          reserved_at?: string
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_redemptions_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "discounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_redemptions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discounts: {
         Row: {
           active: boolean
           code: string
           created_at: string
           id: string
+          max_uses_per_email: number | null
+          min_subtotal_grosze: number
           type: string
+          valid_from: string | null
+          valid_until: string | null
           value: number
         }
         Insert: {
@@ -147,7 +202,11 @@ export type Database = {
           code: string
           created_at?: string
           id?: string
+          max_uses_per_email?: number | null
+          min_subtotal_grosze?: number
           type: string
+          valid_from?: string | null
+          valid_until?: string | null
           value: number
         }
         Update: {
@@ -155,7 +214,11 @@ export type Database = {
           code?: string
           created_at?: string
           id?: string
+          max_uses_per_email?: number | null
+          min_subtotal_grosze?: number
           type?: string
+          valid_from?: string | null
+          valid_until?: string | null
           value?: number
         }
         Relationships: []
@@ -268,7 +331,10 @@ export type Database = {
           currency: string
           delivery_method: string | null
           discount_code: string | null
+          discount_percentage: number | null
+          discount_rule_version: string | null
           discount_total: number
+          discount_type: string | null
           email: string
           first_name: string | null
           guest_token_hash: string | null
@@ -308,7 +374,10 @@ export type Database = {
           currency?: string
           delivery_method?: string | null
           discount_code?: string | null
+          discount_percentage?: number | null
+          discount_rule_version?: string | null
           discount_total?: number
+          discount_type?: string | null
           email: string
           first_name?: string | null
           guest_token_hash?: string | null
@@ -348,7 +417,10 @@ export type Database = {
           currency?: string
           delivery_method?: string | null
           discount_code?: string | null
+          discount_percentage?: number | null
+          discount_rule_version?: string | null
           discount_total?: number
+          discount_type?: string | null
           email?: string
           first_name?: string | null
           guest_token_hash?: string | null
@@ -501,6 +573,7 @@ export type Database = {
       }
       products: {
         Row: {
+          bundle_discounted_price: number | null
           bundle_product_id: string | null
           bundle_quantity: number | null
           created_at: string
@@ -517,6 +590,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bundle_discounted_price?: number | null
           bundle_product_id?: string | null
           bundle_quantity?: number | null
           created_at?: string
@@ -533,6 +607,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bundle_discounted_price?: number | null
           bundle_product_id?: string | null
           bundle_quantity?: number | null
           created_at?: string
@@ -573,6 +648,7 @@ export type Database = {
       create_checkout_quote: {
         Args: {
           p_delivery_method: string
+          p_discount_code: string
           p_gifts: Json
           p_items: Json
           p_request_fingerprint: string
@@ -609,6 +685,10 @@ export type Database = {
           p_phone: string
           p_request_fingerprint: string
         }
+        Returns: Json
+      }
+      transition_discount_redemption: {
+        Args: { p_order_id: string; p_target: string }
         Returns: Json
       }
     }

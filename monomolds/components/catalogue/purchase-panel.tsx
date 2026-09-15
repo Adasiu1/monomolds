@@ -50,7 +50,11 @@ export function PurchasePanel({ offers, defaultMerchandiseId }: { offers: Catalo
         </fieldset>
       ) : null}
 
-      <Price amountGrosze={offer.priceGrosze} netAmountGrosze={offer.netPriceGrosze} />
+      <Price
+        amountGrosze={offer.priceGrosze}
+        netAmountGrosze={offer.netPriceGrosze}
+        originalAmountGrosze={offer.originalPriceGrosze ?? undefined}
+      />
       <p className="purchase-availability">
         {offer.availability.status === "in-stock"
           ? "Dostępna od ręki"

@@ -25,6 +25,13 @@ function deliveryLabel(method: DeliveryMethod) {
   return method === "inpost_locker" ? "Paczkomat InPost" : "Kurier InPost";
 }
 
+const itemErrorLabels = {
+  NOT_FOUND: "Produktu nie ma już w katalogu.",
+  UNAVAILABLE: "Produkt nie jest już dostępny do zamówienia.",
+  PRICE_CHANGED: "Cena lub skład produktu uległy zmianie.",
+  QUANTITY_INVALID: "Wybrana ilość nie jest już prawidłowa.",
+} as const;
+
 function validateBeforeSubmit(formData: FormData, deliveryMethod: DeliveryMethod): Record<string, string[]> {
   const value = (name: string) => {
     const raw = formData.get(name);
@@ -79,6 +86,7 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
   const guestOrderTokenRef = useRef<HTMLInputElement>(null);
   const quote = quotes[deliveryMethod];
   const errors = { ...clientErrors, ...state.fieldErrors };
+  const requiresRefresh = state.refreshSummary && state.rejectedQuoteId === quote.id;
 
   useEffect(() => {
     if (idempotencyKeyRef.current) idempotencyKeyRef.current.value = "";
@@ -122,7 +130,12 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
 
       {state.message ? <div id="checkout-message"><Notice tone={state.status === "error" ? "error" : "success"} title={state.status === "error" ? "Nie udało się złożyć zamówienia" : "Zamówienie zapisane"}>{state.message}</Notice></div> : null}
 
-      {state.refreshSummary ? <Button type="button" variant="secondary" onClick={onRefreshQuotes}>Odśwież podsumowanie bez utraty danych</Button> : null}
+      {requiresRefresh ? <Button type="button" variant="secondary" onClick={onRefreshQuotes}>Odśwież podsumowanie bez utraty danych</Button> : null}
+      {requiresRefresh && state.itemErrors.length > 0 ? <ul className="checkout-item-errors">
+        {state.itemErrors.map((item) => <li key={`${item.merchandiseId}-${item.reason}`}>
+          {itemErrorLabels[item.reason]} Zamówiona ilość: {item.requestedQuantity}.
+        </li>)}
+      </ul> : null}
 
       <fieldset className="checkout-section" disabled={pending}>
         <legend>Dane kontaktowe</legend>
@@ -178,8 +191,8 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
         <p className="ui-field-note">Informacje o przetwarzaniu danych znajdziesz w polityce prywatności.</p>
       </fieldset>
 
-      <Button type="submit" loading={pending} loadingLabel="Zapisujemy zamówienie…">Złóż zamówienie - {formatPrice(quote.totalGrosze)}</Button>
-      {state.status === "error" && state.retryable && !state.refreshSummary ? <p className="ui-field-note">Możesz bezpiecznie spróbować ponownie - ten sam klucz próby nie utworzy drugiego zamówienia.</p> : null}
+      <Button type="submit" disabled={requiresRefresh} loading={pending} loadingLabel="Zapisujemy zamówienie…">Złóż zamówienie - {formatPrice(quote.totalGrosze)}</Button>
+      {state.status === "error" && state.retryable && !requiresRefresh ? <p className="ui-field-note">Możesz bezpiecznie spróbować ponownie - ten sam klucz próby nie utworzy drugiego zamówienia.</p> : null}
     </form>
 
     <aside className="checkout-summary" aria-label="Podsumowanie zamówienia">
@@ -191,7 +204,9 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
       <OrderBenefits physicalItemCount={quote.physicalItemCount} />
       <dl>
         <div><dt>Produkty brutto</dt><dd>{formatPrice(quote.subtotalGrosze)}</dd></div>
-        <div><dt>Rabat</dt><dd>{quote.discountGrosze ? `- ${formatPrice(quote.discountGrosze)}` : "0,00 zł"}</dd></div>
+        {quote.discountGrosze - (quote.appliedDiscount?.amountGrosze ?? 0) > 0 ? <div><dt>Rabat zestawu</dt><dd>- {formatPrice(quote.discountGrosze - (quote.appliedDiscount?.amountGrosze ?? 0))}</dd></div> : null}
+        {quote.appliedDiscount ? <div><dt>Kod {quote.appliedDiscount.code} ({quote.appliedDiscount.percentage}%)</dt><dd>- {formatPrice(quote.appliedDiscount.amountGrosze)}</dd></div> : null}
+        {!quote.discountGrosze ? <div><dt>Rabat</dt><dd>0,00 zł</dd></div> : null}
         <div><dt>Dostawa - {deliveryLabel(deliveryMethod)}</dt><dd>{quote.delivery.priceGrosze ? formatPrice(quote.delivery.priceGrosze) : "Bezpłatna"}</dd></div>
         <div className="checkout-total"><dt>Łącznie brutto</dt><dd>{formatPrice(quote.totalGrosze)}</dd></div>
       </dl>
