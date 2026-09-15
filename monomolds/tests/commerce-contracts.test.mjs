@@ -11,6 +11,41 @@ import {
   canTransitionPaymentAttempt,
   canTransitionRefund,
 } from "../lib/commerce/state-transitions.ts";
+import {
+  deliveryMethodLabel,
+  formatOrderMoney,
+  isGuestOrderToken,
+  isGuestPhone,
+  orderStatusLabels,
+} from "../features/order-status/order-status.ts";
+
+test("validates the guest order token and phone before lookup", () => {
+  assert.equal(isGuestOrderToken("a".repeat(64)), true);
+  assert.equal(isGuestOrderToken("a".repeat(63)), false);
+  assert.equal(isGuestOrderToken("not-a-token"), false);
+  assert.equal(isGuestPhone("+48 123 123 123"), true);
+  assert.equal(isGuestPhone("123"), false);
+});
+
+test("provides guest order labels for every supported status", () => {
+  assert.deepEqual(Object.keys(orderStatusLabels).sort(), [
+    "cancelled",
+    "completed",
+    "expired",
+    "paid",
+    "pending_payment",
+    "processing",
+    "shipped",
+  ]);
+  assert.equal(orderStatusLabels.pending_payment, "Oczekuje na płatność");
+  assert.equal(orderStatusLabels.shipped, "Wysłane");
+});
+
+test("formats order summary values for Polish guests", () => {
+  assert.equal(formatOrderMoney(7799, "PLN"), "77,99 zł");
+  assert.equal(deliveryMethodLabel("inpost_locker"), "Paczkomat InPost");
+  assert.equal(deliveryMethodLabel("courier"), "Kurier");
+});
 
 test("allows only agreed order transitions", () => {
   assert.equal(canTransitionOrder("pending_payment", "paid"), true);

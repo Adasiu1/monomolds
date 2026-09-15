@@ -602,6 +602,15 @@ export type Database = {
         }
         Returns: Json
       }
+      resend_guest_order_status_link: {
+        Args: {
+          p_email: string
+          p_order_number: number
+          p_phone: string
+          p_request_fingerprint: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

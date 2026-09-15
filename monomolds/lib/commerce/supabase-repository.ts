@@ -140,3 +140,32 @@ export async function getGuestOrderStatus(token: string, phone: string, requestF
     return null;
   }
 }
+
+export async function resendGuestOrderStatusLink(
+    orderNumber: number,
+    email: string,
+    phone: string,
+    requestFingerprint: string,
+  ): Promise<{ orderNumber: string; token: string } | null> {
+    try {
+      const { data, error } = await client().rpc("resend_guest_order_status_link", {
+        p_order_number: orderNumber,
+        p_email: email,
+        p_phone: phone,
+        p_request_fingerprint: requestFingerprint,
+      });
+      if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+        console.error("Guest order status link RPC failed.", {
+          code: error?.code ?? "NO_DATA",
+          message: error?.message ?? "RPC returned no data",
+        });
+        return null;
+      }
+      const result = data as { orderNumber?: unknown; token?: unknown };
+      return typeof result.orderNumber === "string" && typeof result.token === "string"
+        ? { orderNumber: result.orderNumber, token: result.token }
+        : null;
+    } catch {
+      return null;
+  }
+}
