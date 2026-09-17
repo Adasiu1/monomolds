@@ -1,6 +1,6 @@
 import type { ComponentPropsWithRef, ReactNode } from "react";
 
-type FieldProps = { id: string; label: string; hint?: string; error?: string };
+type FieldProps = { id: string; label: ReactNode; hint?: string; error?: string };
 
 // Connect each field to its help and error text so screen readers can read both.
 function descriptionIds({ id, hint, error }: FieldProps, extra?: string) {

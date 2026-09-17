@@ -13,7 +13,7 @@ export const COMMERCE_CONFIG = {
     courier: { priceGrosze: 1949, ruleVersion: "inpost-courier-v1", parcelSize: "S" },
   },
   contact: {
-    email: "kontakt@monomolds.pl",
+    email: "monomolds@gmail.com",
     instagramUrl: "https://www.instagram.com/monomolds/",
   },
 } as const;
