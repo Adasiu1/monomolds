@@ -183,12 +183,12 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
 
       <fieldset className="checkout-section" disabled={pending}>
         <legend>Potwierdzenie</legend>
-        <Checkbox id="acceptedTerms" name="acceptedTerms" label="Akceptuję regulamin sklepu i potwierdzam obowiązek zapłaty." required error={errorFor(errors, "acceptedTerms")} />
+        <Checkbox id="acceptedTerms" name="acceptedTerms" label={<>Akceptuję <a href="/regulamin" target="_blank" rel="noreferrer">regulamin sklepu</a> i potwierdzam obowiązek zapłaty.</>} required error={errorFor(errors, "acceptedTerms")} />
         {quote.requiresLeadTimeConfirmation && quote.leadTimeNotice && quote.leadTimeNoticeVersion ? <>
           <input type="hidden" name="leadTimeNoticeVersion" value={quote.leadTimeNoticeVersion} />
           <Checkbox id="acceptedLeadTimeNotice" name="acceptedLeadTimeNotice" label={quote.leadTimeNotice} required error={errorFor(errors, "acceptedLeadTimeNoticeVersion")} />
         </> : null}
-        <p className="ui-field-note">Informacje o przetwarzaniu danych znajdziesz w polityce prywatności.</p>
+        <p className="ui-field-note">Administratorem Twoich danych jest Marmurgranit.net Firstway Yan Orfin. Dane wykorzystamy do przyjęcia i realizacji zamówienia, dostawy, rozliczeń oraz obsługi ewentualnych roszczeń. Podanie danych oznaczonych jako wymagane jest niezbędne do złożenia zamówienia. Szczegóły znajdziesz w <a href="/polityka-prywatnosci" target="_blank" rel="noreferrer">polityce prywatności</a>.</p>
       </fieldset>
 
       <Button type="submit" disabled={requiresRefresh} loading={pending} loadingLabel="Zapisujemy zamówienie…">Złóż zamówienie - {formatPrice(quote.totalGrosze)}</Button>
