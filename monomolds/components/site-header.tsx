@@ -12,6 +12,7 @@ const navigationItems = [
   { href: "/o-nas", label: "O nas" },
   { href: "/faq", label: "FAQ" },
   { href: "/kontakt", label: "Kontakt" },
+  { href: "/zamowienie/status", label: "Sprawdź zamówienie" },
   // Temporary review shortcut. Remove together with the showcase route.
   { href: "/ui-kit", label: "UI Kit" },
 ] as const;
@@ -48,6 +49,22 @@ function BagIcon() {
   );
 }
 
+function OrderStatusIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path d="M6 4.5h12v15H6z" />
+      <path d="M9 8h6M9 12h6M9 16h3" />
+    </svg>
+  );
+}
+
 export function SiteHeader() {
   return (
     <header className="site-header">
@@ -75,6 +92,23 @@ export function SiteHeader() {
                 </PageTransitionLink>
               </li>
             ))}
+            <li>
+              <form action="/sklep" role="search" className="desktop-search-form">
+                <label htmlFor="desktop-search" className="sr-only">
+                  Szukaj produktów
+                </label>
+                <div className="desktop-search">
+                  <SearchIcon />
+                  <input
+                    id="desktop-search"
+                    name="q"
+                    type="search"
+                    placeholder="Szukaj form…"
+                    autoComplete="off"
+                  />
+                </div>
+              </form>
+            </li>
           </ul>
         </nav>
 
@@ -84,21 +118,13 @@ export function SiteHeader() {
               UI Kit
             </LinkButton>
           </div>
-          <form action="/sklep" role="search" className="desktop-search-form">
-            <label htmlFor="desktop-search" className="sr-only">
-              Szukaj produktów
-            </label>
-            <div className="desktop-search">
-              <SearchIcon />
-              <input
-                id="desktop-search"
-                name="q"
-                type="search"
-                placeholder="Szukaj form…"
-                autoComplete="off"
-              />
-            </div>
-          </form>
+          <PageTransitionLink
+            href="/zamowienie/status"
+            className="order-status-link"
+          >
+            <OrderStatusIcon />
+            <span className="hidden sm:inline">Sprawdź zamówienie</span>
+          </PageTransitionLink>
 
           <PageTransitionLink
             href="/koszyk"

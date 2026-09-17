@@ -107,7 +107,8 @@ input {
 }
 
 .icon-button,
-.cart-link {
+.cart-link,
+.order-status-link {
   min-width: 2.75rem;
   min-height: 2.75rem;
   align-items: center;
@@ -123,12 +124,14 @@ input {
     border-color 180ms ease;
 }
 
-.cart-link {
+.cart-link,
+.order-status-link {
   display: inline-flex;
 }
 
 .icon-button:hover,
-.cart-link:hover {
+.cart-link:hover,
+.order-status-link:hover {
   border-color: var(--border);
   background: var(--surface-raised);
 }
@@ -137,6 +140,13 @@ input {
   gap: 0.55rem;
   padding-inline: 0.7rem;
   font-size: 0.875rem;
+}
+
+.order-status-link {
+  gap: 0.45rem;
+  padding-inline: 0.55rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
 }
 
 .cart-count {
@@ -403,9 +413,9 @@ input {
 .desktop-nav-link::after { left: 0.75rem; right: 0.75rem; }
 .primary-button > span, .social-link > span, .mobile-nav-link > span { display: inline-block; transition: transform 160ms var(--ease-out); }
 .social-link { gap: 0.5rem; }
-.icon-button, .cart-link { transition: background-color 160ms ease, border-color 160ms ease, transform 160ms var(--ease-out); }
-.icon-button:active:not(:focus-visible), .cart-link:active:not(:focus-visible) { transform: scale(0.97); }
-.icon-button:focus-visible, .cart-link:focus-visible { transition: none; }
+.icon-button, .cart-link, .order-status-link { transition: background-color 160ms ease, border-color 160ms ease, transform 160ms var(--ease-out); }
+.icon-button:active:not(:focus-visible), .cart-link:active:not(:focus-visible), .order-status-link:active:not(:focus-visible) { transform: scale(0.97); }
+.icon-button:focus-visible, .cart-link:focus-visible, .order-status-link:focus-visible { transition: none; }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .desktop-nav-link:hover:not(:focus-visible)::after, .footer-link:hover:not(:focus-visible)::after { transform: scaleX(1); }
   .primary-button:hover:not(:focus-visible) > span, .mobile-nav-link:hover:not(:focus-visible) > span { transform: translateX(3px); }
@@ -433,7 +443,7 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .primary-button:active:not(:focus-visible), .media-controls button:active:not(:focus-visible), .icon-button:active:not(:focus-visible), .cart-link:active:not(:focus-visible) { transform: none; }
+  .primary-button:active:not(:focus-visible), .media-controls button:active:not(:focus-visible), .icon-button:active:not(:focus-visible), .cart-link:active:not(:focus-visible), .order-status-link:active:not(:focus-visible) { transform: none; }
   .mobile-menu-panel { animation: none; }
   html {
     scroll-behavior: auto;
