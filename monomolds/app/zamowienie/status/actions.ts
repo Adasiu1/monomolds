@@ -1,7 +1,11 @@
 "use server";
 
 import type { PublicOrderStatus } from "@/lib/commerce/contracts";
-import { isGuestPhone, isGuestOrderToken } from "@/features/order-status/order-status";
+import {
+  isGuestPhone,
+  isGuestOrderToken,
+  normalizeGuestPhone,
+} from "@/features/order-status/order-status";
 import { requestFingerprint } from "@/lib/commerce/request-fingerprint";
 import { getGuestOrderStatus } from "@/lib/commerce/supabase-repository";
 import { resendGuestOrderStatusLink } from "@/lib/commerce/supabase-repository";
@@ -16,7 +20,7 @@ export async function readGuestOrderStatus(token: string, phone: string): Promis
   if (!isGuestOrderToken(token) || !isGuestPhone(phone)) {
     return { ok: false, message: safeErrorMessage };
   }
-  const order = await getGuestOrderStatus(token, phone, await requestFingerprint());
+  const order = await getGuestOrderStatus(token, normalizeGuestPhone(phone), await requestFingerprint());
   return order
     ? { ok: true, order }
     : { ok: false, message: safeErrorMessage };
@@ -54,22 +58,27 @@ export async function resendGuestOrderStatusLinkAction(
       validEmail: /^\S+@\S+\.\S+$/.test(emailValue),
       validPhone: isGuestPhone(phoneValue),
     });
-    return { status: "error", message: safeErrorMessage, link: null };
+    return { status: "error", message: safeErrorMessage, link: null, order: null };
   }
 
+  const fingerprint = await requestFingerprint();
   const result = await resendGuestOrderStatusLink(
     parsedOrderNumber,
     emailValue,
-    phoneValue,
-    await requestFingerprint(),
+    normalizeGuestPhone(phoneValue),
+    fingerprint,
   );
 
-  if (!result) return { status: "error", message: safeErrorMessage, link: null };
+  if (!result) return { status: "error", message: safeErrorMessage, link: null, order: null };
+
+  const order = await getGuestOrderStatus(result.token, normalizeGuestPhone(phoneValue), fingerprint);
+  if (!order) return { status: "error", message: safeErrorMessage, link: null, order: null };
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   return {
     status: "success",
     message: "Wygenerowano nowy link do statusu zamówienia.",
     link: `${origin.replace(/\/$/, "")}/zamowienie/status?token=${encodeURIComponent(result.token)}`,
+    order,
   };
 }

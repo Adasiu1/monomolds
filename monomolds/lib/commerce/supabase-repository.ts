@@ -159,9 +159,16 @@ export async function getGuestOrderStatus(token: string, phone: string, requestF
       p_phone: phone,
       p_request_fingerprint: requestFingerprint,
     });
-    if (error || !data) return null;
+    if (error || !data) {
+      console.error("Guest order status RPC failed.", {
+        code: error?.code ?? "NO_DATA",
+        message: error?.message ?? "RPC returned no data",
+      });
+      return null;
+    }
     return data as PublicOrderStatus;
-  } catch {
+  } catch (error) {
+    console.error("Guest order status request failed.", error);
     return null;
   }
 }

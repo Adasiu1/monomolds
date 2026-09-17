@@ -28,6 +28,7 @@ export type ResendGuestOrderLinkState = {
   status: "idle" | "error" | "success";
   message: string | null;
   link: string | null;
+  order: PublicOrderStatus | null;
 };
 
 export const initialOrderStatusFormState: OrderStatusFormState = {
@@ -40,6 +41,7 @@ export const initialResendGuestOrderLinkState: ResendGuestOrderLinkState = {
   status: "idle",
   message: null,
   link: null,
+  order: null,
 };
 
 export function isGuestOrderToken(value: string): boolean {
@@ -47,7 +49,12 @@ export function isGuestOrderToken(value: string): boolean {
 }
 
 export function isGuestPhone(value: string): boolean {
-  return /^\+?[0-9 ]{7,18}$/.test(value);
+  if (!/^[+()\-\s0-9]+$/.test(value)) return false;
+  return /^\d{9,15}$/.test(normalizeGuestPhone(value));
+}
+
+export function normalizeGuestPhone(value: string): string {
+  return value.replace(/\D/g, "");
 }
 
 export function formatOrderMoney(amountGrosze: number, currency: string): string {

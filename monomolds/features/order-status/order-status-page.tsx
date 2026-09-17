@@ -36,8 +36,7 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
           <p className="checkout-confirmation-eyebrow">Moje zamówienie</p>
           <h1>Sprawdź status zamówienia</h1>
           <p>
-            Otworzyłeś bezpośredni link do zamówienia. Potwierdź numer telefonu
-            użyty podczas zakupu, aby zobaczyć jego aktualny status.
+          Potwierdź swoje dane użyte podczas składania zamówienia, aby zobaczyć jego aktualny status.
           </p>
         </header>
 
@@ -70,19 +69,36 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
               {pending ? "Sprawdzanie..." : "Sprawdź status"}
             </button>
           </form>
-        ) : (
+        ) : initialToken ? (
           <p className="ui-notice ui-notice--error" role="alert">
             <span className="ui-notice-icon" aria-hidden="true">!</span>
             <span>Ten link do zamówienia jest nieprawidłowy lub wygasł.</span>
           </p>
-        )}
+        ) : null}
 
         {state.status === "success" && <OrderSummary order={state.order} />}
-        <ResendLinkForm
-          state={resendState}
-          action={resendAction}
-          pending={resendPending}
-        />
+        {resendState.status === "success" && resendState.order && (
+          <>
+            <p className="ui-notice ui-notice--success" role="status">
+              <span>{resendState.message}</span>
+            </p>
+            {resendState.link && (
+              <p className="order-status-generated-link">
+                <span>Link do sprawdzania zamówienia:</span>
+                <a href={resendState.link}>{resendState.link}</a>
+              </p>
+            )}
+            <OrderSummary order={resendState.order} />
+          </>
+        )}
+        {state.status !== "success" && resendState.status !== "success" && (
+          <ResendLinkForm
+            state={resendState}
+            action={resendAction}
+            pending={resendPending}
+            open={!initialToken}
+          />
+        )}
       </div>
     </div>
   );
@@ -92,14 +108,16 @@ function ResendLinkForm({
   state,
   action,
   pending,
+  open,
 }: {
   state: typeof initialResendGuestOrderLinkState;
   action: (payload: FormData) => void;
   pending: boolean;
+  open: boolean;
 }) {
   return (
-    <details className="order-status-resend">
-      <summary>Nie masz już linku do zamówienia?</summary>
+    <details className="order-status-resend" open={open || undefined}>
+      <summary>Nie masz linku do zamówienia?</summary>
       <p className="ui-field-note">
         Podaj numer zamówienia, e-mail i telefon użyte przy zakupie. W środowisku
         produkcyjnym ten link powinien zostać wysłany e-mailem.
@@ -120,7 +138,11 @@ function ResendLinkForm({
         {state.status !== "idle" && (
           <div className={state.status === "error" ? "ui-notice ui-notice--error" : "ui-notice ui-notice--success"} role={state.status === "error" ? "alert" : "status"}>
             <span>{state.message}</span>
-            {state.link && <a href={state.link}>{state.link}</a>}
+            {state.link && (
+              <a href={state.link} className="order-status-resend-link">
+                {state.link}
+              </a>
+            )}
           </div>
         )}
         <button className="ui-button ui-button--secondary" type="submit" disabled={pending} aria-busy={pending}>

@@ -27,6 +27,9 @@
 .order-status-resend-form { display: grid; gap: 1rem; margin-top: 1rem; }
 .order-status-resend .ui-notice { display: grid; gap: .5rem; margin: 0; overflow-wrap: anywhere; }
 .order-status-resend .ui-notice a { color: var(--accent); overflow-wrap: anywhere; }
+.order-status-generated-link { display: grid; gap: .35rem; max-width: 34rem; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface); overflow-wrap: anywhere; }
+.order-status-generated-link span { color: var(--muted); font-size: .9rem; }
+.order-status-generated-link a { color: var(--accent); }
 @media (max-width: 480px) {
   .order-status-result-header, .order-status-item { flex-direction: column; }
   .order-status-badge { align-self: start; }

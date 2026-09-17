@@ -17,6 +17,7 @@ import {
   formatOrderMoney,
   isGuestOrderToken,
   isGuestPhone,
+  normalizeGuestPhone,
   orderStatusLabels,
 } from "../features/order-status/order-status.ts";
 
@@ -25,7 +26,9 @@ test("validates the guest order token and phone before lookup", () => {
   assert.equal(isGuestOrderToken("a".repeat(63)), false);
   assert.equal(isGuestOrderToken("not-a-token"), false);
   assert.equal(isGuestPhone("+48 123 123 123"), true);
+  assert.equal(isGuestPhone("+48 (123) 123-123"), true);
   assert.equal(isGuestPhone("123"), false);
+  assert.equal(normalizeGuestPhone("+48 (123) 123-123"), "48123123123");
 });
 
 test("provides guest order labels for every supported status", () => {
