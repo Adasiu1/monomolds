@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 
-import { submitGuestCheckout } from "@/app/zamowienie/actions";
+import { submitGuestCheckout } from "@/app/checkout/actions";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Checkbox, TextField } from "@/components/ui/fields";
 import { Notice } from "@/components/ui/feedback";

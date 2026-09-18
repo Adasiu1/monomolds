@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore, useState } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore, useState } from "react";
 
 import { LinkButton } from "@/components/ui/button";
 import { Notice } from "@/components/ui/feedback";
@@ -16,38 +16,47 @@ export function CheckoutFromCart() {
   const discountCode = useSyncExternalStore(subscribeToCart, readDiscountSnapshot, () => "");
   const [quotes, setQuotes] = useState<Record<DeliveryMethod, Quote> | null>(null);
   const [error, setError] = useState("");
+  const quoteRequestId = useRef(0);
 
-  const loadQuotes = useCallback(async () => {
-    if (items.length === 0) return;
+  const fetchQuotes = useCallback(async (): Promise<
+    | { status: "ready"; quotes: Record<DeliveryMethod, Quote> }
+    | { status: "error"; message: string }
+    | null
+  > => {
+    if (items.length === 0) return null;
+    const requestId = ++quoteRequestId.current;
     try {
       const [inpost, courier] = await Promise.all([repriceCart(items, "inpost_locker", giftItems, discountCode), repriceCart(items, "courier", giftItems, discountCode)]);
+      if (requestId !== quoteRequestId.current) return null;
       if (!inpost.ok || !courier.ok) {
-        setError(!inpost.ok ? inpost.error.message : "Nie udało się przygotować wyceny dostawy.");
-        return;
+        return { status: "error", message: !inpost.ok ? inpost.error.message : "Nie udało się przygotować wyceny dostawy." };
       }
-      setQuotes({ inpost_locker: inpost.data.quote, courier: courier.data.quote });
-      setError("");
+      return { status: "ready", quotes: { inpost_locker: inpost.data.quote, courier: courier.data.quote } };
     } catch {
-      setError("Nie udało się przygotować wyceny zamówienia. Spróbuj ponownie.");
+      return requestId === quoteRequestId.current
+        ? { status: "error", message: "Nie udało się przygotować wyceny zamówienia. Spróbuj ponownie." }
+        : null;
     }
   }, [discountCode, giftItems, items]);
 
+  const applyQuotes = useCallback((result: Awaited<ReturnType<typeof fetchQuotes>>) => {
+    if (!result) return;
+    if (result.status === "error") {
+      setError(result.message);
+      return;
+    }
+    setQuotes(result.quotes);
+    setError("");
+  }, []);
+
+  const loadQuotes = useCallback(async () => {
+    applyQuotes(await fetchQuotes());
+  }, [applyQuotes, fetchQuotes]);
+
   useEffect(() => {
-    let cancelled = false;
-    if (items.length === 0) return;
-    Promise.all([repriceCart(items, "inpost_locker", giftItems, discountCode), repriceCart(items, "courier", giftItems, discountCode)]).then(([inpost, courier]) => {
-      if (cancelled) return;
-      if (!inpost.ok || !courier.ok) {
-        setError(!inpost.ok ? inpost.error.message : "Nie udało się przygotować wyceny dostawy.");
-        return;
-      }
-      setQuotes({ inpost_locker: inpost.data.quote, courier: courier.data.quote });
-      setError("");
-    }).catch(() => {
-      if (!cancelled) setError("Nie udało się przygotować wyceny zamówienia. Spróbuj ponownie.");
-    });
-    return () => { cancelled = true; };
-  }, [discountCode, giftItems, items]);
+    void fetchQuotes().then(applyQuotes);
+    return () => { quoteRequestId.current += 1; };
+  }, [applyQuotes, fetchQuotes]);
 
   useEffect(() => {
     if (!quotes) return;

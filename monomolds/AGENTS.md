@@ -59,9 +59,10 @@ browser automation, Jira, Supabase Dashboard, or GitHub CLI are available.
   technical documentation, database objects, and environment-variable names.
 - Prefer lowercase kebab-case for ordinary files and directories. Keep framework
   conventions such as `page.tsx`, `layout.tsx`, and `loading.tsx`.
-- Existing Polish route directories such as `sklep`, `koszyk`, `zestawy`, and
-  `zamowienie` are legacy public-URL boundaries. Do not copy this naming pattern
-  into new internal paths, and do not rename these routes during unrelated work.
+- Polish storefront URLs such as `/sklep`, `/koszyk`, `/zestawy`, and
+  `/zamowienie` are legacy public boundaries backed by English source directories
+  through `next.config.ts` rewrites. Keep new internal paths English and preserve
+  the Polish URLs as canonical customer-facing routes.
 - A new Polish public URL that would require a Polish source directory needs an
   explicit routing decision first. The default remains an English source path.
 - Keep UI strings ready for a future English locale, but do not implement an

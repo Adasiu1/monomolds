@@ -27,7 +27,6 @@ export default function RootLayout({
         <a href="#main-content" className="skip-link">
           Przejdź do treści
         </a>
-        {/* Every page shares this header and footer. Only the main content changes. */}
         {/* Header and footer are shared by every route. The page content sits between them. */}
         <SiteHeader />
         <PageTransitionController />
