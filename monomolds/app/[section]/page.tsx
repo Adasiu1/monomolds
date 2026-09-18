@@ -7,6 +7,8 @@ import { Notice } from "@/components/ui/feedback";
 import { COMMERCE_CONFIG } from "@/lib/commerce/config";
 import { formatPrice } from "@/lib/format-price";
 
+export const dynamicParams = false;
+
 type Question = { question: string; answer: React.ReactNode };
 type ContentSection = {
   heading: string;

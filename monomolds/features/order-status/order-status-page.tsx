@@ -5,7 +5,7 @@ import type { PublicOrderStatus } from "@/lib/commerce/contracts";
 import {
   readGuestOrderStatusAction,
   resendGuestOrderStatusLinkAction,
-} from "@/app/zamowienie/status/actions";
+} from "@/app/checkout/status/actions";
 import {
   deliveryMethodLabel,
   formatOrderDate,

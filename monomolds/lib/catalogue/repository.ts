@@ -173,47 +173,51 @@ export async function getPublishedCatalogue(kind: CatalogueItem["kind"]): Promis
   }
 
   const products = data as ProductWithImages[];
-  const variantsByParent = new Map<string, ProductRow[]>();
-  if (products.length > 0) {
-    const { data: variantData, error: variantError } = await client
-      .from("products")
-      .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
-      .eq("status", "published")
-      .eq("type", "variant")
-      .in("parent_id", products.map((product) => product.id));
+  const productIds = products.map((product) => product.id);
+  const [images, variantsResponse, bundleItemsResponse] = await Promise.all([
+    makeImages(products),
+    products.length > 0
+      ? client
+        .from("products")
+        .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+        .eq("status", "published")
+        .eq("type", "variant")
+        .in("parent_id", productIds)
+      : Promise.resolve({ data: [], error: null }),
+    kind === "bundle" && products.length > 0
+      ? client
+        .from("products")
+        .select("parent_id, bundle_quantity")
+        .eq("status", "published")
+        .eq("type", "bundle_item")
+        .in("parent_id", productIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
 
-    if (variantError || !variantData) {
-      reportDataError("list-catalogue-variants", variantError);
-      throw new CatalogueRepositoryError();
-    }
-    for (const variant of variantData as ProductRow[]) {
-      if (!variant.parent_id) continue;
-      const siblings = variantsByParent.get(variant.parent_id) ?? [];
-      siblings.push(variant);
-      variantsByParent.set(variant.parent_id, siblings);
-    }
+  if (variantsResponse.error || !variantsResponse.data) {
+    reportDataError("list-catalogue-variants", variantsResponse.error);
+    throw new CatalogueRepositoryError();
+  }
+  if (bundleItemsResponse.error || !bundleItemsResponse.data) {
+    reportDataError("list-bundle-items", bundleItemsResponse.error);
+    throw new CatalogueRepositoryError();
   }
 
-  const images = await makeImages(products);
+  const variantsByParent = new Map<string, ProductRow[]>();
+  for (const variant of variantsResponse.data as ProductRow[]) {
+    if (!variant.parent_id) continue;
+    const siblings = variantsByParent.get(variant.parent_id) ?? [];
+    siblings.push(variant);
+    variantsByParent.set(variant.parent_id, siblings);
+  }
+
   const bundleItemCounts = new Map<string, number>();
-  if (kind === "bundle" && products.length > 0) {
-    const { data: bundleItems, error: bundleItemsError } = await client
-      .from("products")
-      .select("parent_id, bundle_quantity")
-      .eq("status", "published")
-      .eq("type", "bundle_item")
-      .in("parent_id", products.map((product) => product.id));
-    if (bundleItemsError || !bundleItems) {
-      reportDataError("list-bundle-items", bundleItemsError);
-      throw new CatalogueRepositoryError();
-    }
-    for (const bundleItem of bundleItems) {
-      if (!bundleItem.parent_id) continue;
-      bundleItemCounts.set(
-        bundleItem.parent_id,
-        (bundleItemCounts.get(bundleItem.parent_id) ?? 0) + (bundleItem.bundle_quantity ?? 1),
-      );
-    }
+  for (const bundleItem of bundleItemsResponse.data) {
+    if (!bundleItem.parent_id) continue;
+    bundleItemCounts.set(
+      bundleItem.parent_id,
+      (bundleItemCounts.get(bundleItem.parent_id) ?? 0) + (bundleItem.bundle_quantity ?? 1),
+    );
   }
   return products.map((product) =>
     toItem(
@@ -242,29 +246,29 @@ async function loadPublishedCatalogueItem(slug: string, kind: CatalogueItem["kin
   if (!data) return null;
 
   const product = data as ProductWithRelations;
-  const { data: childData, error: childError } = await client
-    .from("products")
-    .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
-    .eq("parent_id", product.id)
-    .eq("status", "published")
-    .in("type", ["variant", "bundle_item"]);
+  const [imageMap, childResponse] = await Promise.all([
+    makeImages([product]),
+    client
+      .from("products")
+      .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+      .eq("parent_id", product.id)
+      .eq("status", "published")
+      .in("type", ["variant", "bundle_item"]),
+  ]);
 
-  if (childError || !childData) {
-    reportDataError("get-catalogue-item-children", childError);
+  if (childResponse.error || !childResponse.data) {
+    reportDataError("get-catalogue-item-children", childResponse.error);
     throw new CatalogueRepositoryError();
   }
 
-  const children = childData as ProductRow[];
+  const children = childResponse.data as ProductRow[];
   const bundleProductIds = children.flatMap((child) => child.type === "bundle_item" && child.bundle_product_id ? [child.bundle_product_id] : []);
-  const [imageMap, bundleProductsResponse] = await Promise.all([
-    makeImages([product]),
-    bundleProductIds.length > 0
-      ? client.from("products")
-        .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
-        .eq("status", "published")
-        .in("id", bundleProductIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  const bundleProductsResponse = bundleProductIds.length > 0
+    ? await client.from("products")
+      .select("id, slug, name, description, price, bundle_discounted_price, currency, stock_quantity, status, type, parent_id, bundle_product_id, bundle_quantity, created_at, updated_at")
+      .eq("status", "published")
+      .in("id", bundleProductIds)
+    : { data: [], error: null };
   if (bundleProductsResponse.error || !bundleProductsResponse.data) {
     reportDataError("get-bundle-products", bundleProductsResponse.error);
     throw new CatalogueRepositoryError();

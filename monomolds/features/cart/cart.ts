@@ -1,15 +1,10 @@
 import type { CartItem, GiftSelection } from "@/lib/commerce/contracts";
 
 export const CART_STORAGE_KEY = "monomolds-guest-cart";
-export const CART_DEMO_SEEDED_KEY = "monomolds-demo-cart-seeded";
 export const CART_GIFTS_STORAGE_KEY = "monomolds-guest-cart-gifts";
 export const CART_DISCOUNT_STORAGE_KEY = "monomolds-guest-cart-discount";
 export const MAX_CART_QUANTITY = 99;
 export const EMPTY_CART: CartItem[] = [];
-export const DEMO_CART_ITEMS: CartItem[] = [
-  { merchandiseId: "bundle-four", quantity: 1 },
-  { merchandiseId: "variant-heart", quantity: 2 },
-];
 
 let cachedStorageValue: string | null | undefined;
 let cachedCartSnapshot: CartItem[] = EMPTY_CART;
@@ -141,24 +136,4 @@ export function subscribeToCart(callback: () => void) {
     window.removeEventListener("storage", callback);
     window.removeEventListener("monomolds-cart-change", callback);
   };
-}
-
-export function seedDemoCartIfNeeded(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    if (window.localStorage.getItem(CART_DEMO_SEEDED_KEY) === "1") return false;
-
-    const current = window.localStorage.getItem(CART_STORAGE_KEY);
-    if (current !== null && normalizeCartItems(JSON.parse(current)).length > 0) {
-      window.localStorage.setItem(CART_DEMO_SEEDED_KEY, "1");
-      return false;
-    }
-
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(DEMO_CART_ITEMS));
-    window.localStorage.setItem(CART_DEMO_SEEDED_KEY, "1");
-    return true;
-  } catch (error) {
-    console.error("Nie udało się przygotować przykładowego koszyka.", error);
-    return false;
-  }
 }

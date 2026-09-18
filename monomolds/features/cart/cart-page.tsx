@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { repriceCart } from "./actions";
 import {
@@ -23,8 +23,7 @@ import { formatPrice } from "@/lib/format-price";
 import type { CartItem, Quote } from "@/lib/commerce/contracts";
 
 export function CartPage() {
-  const storedItems = useSyncExternalStore(subscribeToCart, readCartSnapshot, () => EMPTY_CART);
-  const items = storedItems;
+  const items = useSyncExternalStore(subscribeToCart, readCartSnapshot, () => EMPTY_CART);
   const giftItems = useSyncExternalStore(subscribeToCart, readGiftSnapshot, () => EMPTY_CART);
   const discountCode = useSyncExternalStore(subscribeToCart, readDiscountSnapshot, () => "");
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -79,7 +78,7 @@ export function CartPage() {
     writeGiftSnapshot([]);
     commit(updateCartItem(items, merchandiseId, quantity));
   };
-  const totalItems = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const quoteMatchesCart = quote?.items.length === items.length && quote?.items.every((item) =>
     items.some((cartItem) => cartItem.merchandiseId === item.merchandiseId && cartItem.quantity === item.quantity),
   ) && quote.giftPromotion.selectedItems.reduce((sum, item) => sum + item.quantity, 0) === giftItems.reduce((sum, item) => sum + item.quantity, 0)
