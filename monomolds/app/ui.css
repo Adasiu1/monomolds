@@ -94,7 +94,7 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .contact-form-panel { max-width: 42rem; }
 .contact-form-panel h2, .contact-details h2 { font-size: 1.2rem; font-weight: 600; }
 .contact-form { display: grid; gap: 1.35rem; margin-top: 1.5rem; }
-.contact-form-name { display: grid; gap: 1.35rem; }
+.contact-form-name { display: grid; align-items: start; gap: 1.35rem; }
 .contact-privacy { color: var(--muted); font-size: .85rem; line-height: 1.65; }
 .contact-privacy a, .contact-email { color: var(--foreground); text-underline-offset: .2rem; }
 .contact-submit { width: 100%; }

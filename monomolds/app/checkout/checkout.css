@@ -6,7 +6,7 @@
 .checkout-section { display: grid; gap: 1.15rem; margin: 0; padding: 0; border: 0; min-width: 0; }
 .checkout-section > legend { margin-bottom: .25rem; font-size: 1.25rem; font-weight: 600; }
 .checkout-invoice-fields { display: grid; gap: 1.15rem; }
-.checkout-field-grid { display: grid; gap: 1.15rem; }
+.checkout-field-grid { display: grid; align-items: start; gap: 1.15rem; }
 .checkout-delivery-options { display: grid; gap: .75rem; }
 .checkout-delivery-option { display: flex; align-items: center; gap: .8rem; min-height: 4.5rem; padding: .85rem 1rem; border: 1px solid #676b63; border-radius: .65rem; background: var(--surface); cursor: pointer; }
 .checkout-delivery-option:has(input:checked) { border-color: var(--accent); }
