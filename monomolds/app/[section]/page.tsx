@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { LinkButton } from "@/components/ui/button";
 import { Notice } from "@/components/ui/feedback";
+import { ContactPage } from "@/features/contact/contact-page";
+import { COMMERCE_CONFIG } from "@/lib/commerce/config";
 
 // Temporary navigation destinations. Dedicated routes will take precedence.
 // These honest shells avoid blank pages while each feature gets its own story.
@@ -8,7 +10,7 @@ const sections: Record<string, { title: string; description: string }> = {
   zestawy: { title: "Zestawy", description: "Przygotowujemy kolekcję zestawów. Skład, ceny i dostępność podamy po uzupełnieniu katalogu. Zakupy nie są jeszcze dostępne." },
   "o-nas": { title: "O nas", description: "Przygotowujemy opowieść o MonoMolds i naszej pracowni ręcznie wykonywanych form silikonowych." },
   faq: { title: "FAQ", description: "Tutaj pojawią się odpowiedzi na pytania o formy, ich użytkowanie i zamówienia." },
-  kontakt: { title: "Kontakt", description: "Strona kontaktowa jest w przygotowaniu. Na razie możesz odwiedzić nasz profil na Instagramie przez link w stopce." },
+  kontakt: { title: "Kontakt", description: "" },
   koszyk: { title: "Koszyk", description: "Sprawdź podsumowanie koszyka i podaj dane potrzebne do dostawy. Zakup złożysz bez rejestracji." },
   "dostawa-i-zwroty": { title: "Dostawa i zwroty", description: "Informacje o dostawie i zwrotach czekają na zatwierdzenie. Nie publikujemy jeszcze stawek ani warunków." },
   regulamin: { title: "Regulamin sklepu", description: "Regulamin jest w przygotowaniu i wymaga zatwierdzenia przed uruchomieniem sprzedaży. Ta strona nie zawiera obowiązujących warunków zakupów." },
@@ -29,6 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ section: 
 export default async function PendingPage({ params }: { params: Promise<{ section: string }> }) {
   const key = (await params).section;
   const section = getSection(key);
+  if (key === "kontakt") return <ContactPage email={COMMERCE_CONFIG.contact.email} />;
   const isCart = key === "koszyk";
   return <div className="site-container ui-page-shell"><p className="eyebrow">MonoMolds</p><h1>{section.title}</h1><Notice title={isCart ? "Gotowe do zamówienia" : "Strona w przygotowaniu"} announce={false}>{section.description}</Notice><LinkButton href={isCart ? "/zamowienie" : "/"}>{isCart ? "Przejdź do zamówienia" : <>Wróć na stronę główną <span aria-hidden="true" className="ui-arrow">→</span></>}</LinkButton></div>;
 }

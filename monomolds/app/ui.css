@@ -86,6 +86,23 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .ui-site-loading .ui-brand-loader-mark { width: clamp(5rem, 10vw, 7rem); height: auto; }
 @keyframes brand-loader-travel { to { stroke-dashoffset: -100; } }
 
+.contact-page { padding-block: clamp(3rem, 6vw, 6rem); }
+.contact-heading { max-width: 42rem; }
+.contact-heading h1 { margin-top: .65rem; font-size: clamp(2.4rem, 7vw, 4.5rem); letter-spacing: -.055em; line-height: 1.05; }
+.contact-heading > p:last-child { max-width: 36rem; margin-top: 1.35rem; color: var(--muted); font-size: 1.05rem; line-height: 1.75; }
+.contact-layout { display: grid; gap: 3rem; margin-top: clamp(3rem, 7vw, 6rem); }
+.contact-form-panel { max-width: 42rem; }
+.contact-form-panel h2, .contact-details h2 { font-size: 1.2rem; font-weight: 600; }
+.contact-form { display: grid; gap: 1.35rem; margin-top: 1.5rem; }
+.contact-form-name { display: grid; gap: 1.35rem; }
+.contact-privacy { color: var(--muted); font-size: .85rem; line-height: 1.65; }
+.contact-privacy a, .contact-email { color: var(--foreground); text-underline-offset: .2rem; }
+.contact-submit { width: 100%; }
+.contact-details { align-self: start; max-width: 28rem; padding-top: .2rem; border-top: 1px solid var(--border); }
+.contact-details h2 { margin-top: 1.25rem; }
+.contact-details p { margin-top: 1rem; color: var(--muted); line-height: 1.7; }
+.contact-email { display: inline-block; margin-top: 1rem; font-size: 1.05rem; font-weight: 600; overflow-wrap: anywhere; }
+
 .ui-page-shell { padding-block: clamp(3rem, 8vw, 7rem); min-height: 55vh; }
 .ui-page-shell h1 { font-size: clamp(2.25rem, 5vw, 4rem); letter-spacing: -.04em; line-height: 1.1; margin-block: 1.25rem 2rem; }
 .ui-page-shell .ui-notice { max-width: 42rem; margin-bottom: 2rem; }
@@ -176,6 +193,13 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 
 /* Give cards more columns only when there is enough room to read their names. */
 @media (min-width: 640px) { .ui-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 640px) {
+  .contact-form-name { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 900px) {
+  .contact-layout { grid-template-columns: minmax(0, 42rem) minmax(16rem, 1fr); align-items: start; gap: clamp(4rem, 9vw, 9rem); }
+  .contact-details { position: sticky; top: 6rem; }
+}
 @media (min-width: 1024px) { .ui-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 768px) {
   .catalogue-results-row { min-height: 3.75rem; }
