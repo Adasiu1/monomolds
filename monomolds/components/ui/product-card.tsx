@@ -20,7 +20,6 @@ export type ProductCardData = PriceProps & {
   physicalItemCount?: number;
 };
 
-// One reusable product tile. This card does not fetch data or add items to a cart.
 /** Presentation-only card. The parent owns data fetching, cart actions and inventory rules. */
 export function ProductCard({ product, action }: { product: ProductCardData; action?: ReactNode }) {
   return <article className="ui-product-card">

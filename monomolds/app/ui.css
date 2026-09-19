@@ -107,6 +107,39 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .ui-page-shell h1 { font-size: clamp(2.25rem, 5vw, 4rem); letter-spacing: -.04em; line-height: 1.1; margin-block: 1.25rem 2rem; }
 .ui-page-shell .ui-notice { max-width: 42rem; margin-bottom: 2rem; }
 
+.content-page { padding-block: clamp(3rem, 7vw, 6.5rem); }
+.content-page-header h1 { max-width: 16ch; margin-top: 1rem; font-size: clamp(2.75rem, 6vw, 5.5rem); font-weight: 500; line-height: 1; letter-spacing: -.055em; text-wrap: balance; }
+.content-page-header > p:last-child { max-width: 44rem; margin-top: 1.5rem; color: var(--muted); font-size: clamp(1rem, 2vw, 1.2rem); line-height: 1.75; }
+.content-page-layout { display: grid; gap: clamp(3rem, 7vw, 7rem); margin-top: clamp(3rem, 7vw, 6rem); }
+.content-page-aside { display: none; }
+.content-page-body { min-width: 0; max-width: 48rem; }
+.content-page-body > .ui-notice { margin-bottom: 3rem; }
+.content-page-body section { scroll-margin-top: 2rem; padding-block: clamp(2rem, 5vw, 3.5rem); border-top: 1px solid var(--border); }
+.content-page-body section:first-of-type { padding-top: 0; border-top: 0; }
+.content-page-body h2 { margin-bottom: 1.25rem; font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 550; line-height: 1.2; letter-spacing: -.025em; }
+.content-page-body p, .content-page-body li, .content-faq-list details > div { color: var(--muted); line-height: 1.8; }
+.content-page-body p + p { margin-top: 1rem; }
+.content-page-body ul { display: grid; gap: .65rem; margin: 0; padding-left: 1.25rem; }
+.content-page-body a { color: var(--foreground); text-underline-offset: .2em; }
+.content-faq-list { border-bottom: 1px solid var(--border); }
+.content-faq-list details { border-top: 1px solid var(--border); }
+.content-faq-list summary { display: flex; min-height: 3.75rem; align-items: center; justify-content: space-between; gap: 1rem; padding-block: .9rem; font-weight: 600; cursor: pointer; list-style: none; }
+.content-faq-list summary::-webkit-details-marker { display: none; }
+.content-faq-list summary::after { color: var(--accent); font-size: 1.35rem; font-weight: 400; content: "+"; }
+.content-faq-list details[open] summary::after { content: "−"; }
+.content-faq-list details > div { padding: 0 2.5rem 1.25rem 0; }
+.content-page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; padding-top: 1rem; }
+.content-page-actions > a:last-child { min-height: 44px; align-content: center; color: var(--muted); font-size: .9rem; }
+
+@media (min-width: 1024px) {
+  .content-page-layout { grid-template-columns: minmax(12rem, 1fr) minmax(0, 3fr); }
+  .content-page-aside { display: block; position: sticky; top: 3rem; align-self: start; }
+  .content-page-aside > p { color: var(--muted); font-size: .75rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
+  .content-page-aside ol { display: grid; gap: .75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .content-page-aside a { color: var(--muted); font-size: .875rem; line-height: 1.5; text-decoration: none; }
+  .content-page-aside a:hover { color: var(--foreground); }
+}
+
 .catalogue-page { min-height: 60vh; padding-block: clamp(3rem, 7vw, 6.5rem); }
 .catalogue-header { max-width: 48rem; }
 .catalogue-header h1 { margin-top: 1rem; font-size: clamp(2.75rem, 6vw, 5.5rem); font-weight: 500; line-height: 1; letter-spacing: -.055em; text-wrap: balance; }

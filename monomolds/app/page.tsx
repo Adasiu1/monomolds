@@ -24,7 +24,6 @@ const brandBenefits = [
 export default function HomePage() {
   return (
     <div className="site-container">
-      {/* Explain the offer, link to the shop and show the 3D model. */}
       {/* Hero: explain the offer, link to Formy, and show the optional 3D model. */}
       <section className="home-hero" aria-labelledby="home-title">
         <div className="home-intro">
@@ -49,7 +48,6 @@ export default function HomePage() {
         <HeroMonkey />
       </section>
 
-      {/* These spaces will hold real photos when the catalogue is ready. */}
       {/* Reserved product spaces will receive real catalogue media later. */}
       <section id="poznaj-formy" className="home-products" aria-labelledby="products-title">
         <div className="section-heading">
