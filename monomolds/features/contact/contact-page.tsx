@@ -37,7 +37,7 @@ export function ContactPage({ email }: { email: string }) {
   const [errors, setErrors] = useState<ContactErrors>({});
   const [submission, setSubmission] = useState<SubmissionState>(initialState);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const nextErrors = validate(form);
@@ -47,14 +47,34 @@ export function ContactPage({ email }: { email: string }) {
       return;
     }
 
+    const formData = new FormData(form);
     setSubmission({ status: "sending" });
-    queueMicrotask(() => {
-      setSubmission({
-        status: "error",
-        message:
-          "Formularz nie jest jeszcze podłączony do obsługi zgłoszeń. Wyślij wiadomość bezpośrednio na podany adres e-mail.",
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: formData.get("firstName"),
+          lastName: formData.get("lastName"),
+          email: formData.get("email"),
+          orderNumber: formData.get("orderNumber"),
+          subject: formData.get("subject"),
+          message: formData.get("message"),
+          consent: formData.get("consent") === "on",
+          website: formData.get("website"),
+        }),
       });
-    });
+      const result: { message?: string } = await response.json();
+      if (!response.ok) {
+        setSubmission({ status: "error", message: result.message ?? "Nie udało się wysłać wiadomości. Spróbuj ponownie." });
+        return;
+      }
+      form.reset();
+      setErrors({});
+      setSubmission({ status: "success", message: result.message ?? "Wiadomość została wysłana." });
+    } catch {
+      setSubmission({ status: "error", message: "Nie udało się połączyć. Spróbuj ponownie lub napisz do nas bezpośrednio." });
+    }
   }
 
   const isSending = submission.status === "sending";
@@ -81,6 +101,7 @@ export function ContactPage({ email }: { email: string }) {
                 name="firstName"
                 label="Imię"
                 autoComplete="given-name"
+                maxLength={100}
                 required
                 error={errors.firstName}
               />
@@ -89,6 +110,7 @@ export function ContactPage({ email }: { email: string }) {
                 name="lastName"
                 label="Nazwisko"
                 autoComplete="family-name"
+                maxLength={100}
               />
             </div>
             <TextField
@@ -98,6 +120,7 @@ export function ContactPage({ email }: { email: string }) {
               type="email"
               inputMode="email"
               autoComplete="email"
+              maxLength={254}
               required
               error={errors.email}
             />
@@ -107,11 +130,13 @@ export function ContactPage({ email }: { email: string }) {
               label="Numer zamówienia"
               hint="Opcjonalnie. Jeśli go nie masz, sami odszukamy twoje zamówienie."
               autoComplete="off"
+              maxLength={100}
             />
             <TextField
               id="contact-subject"
               name="subject"
               label="Temat wiadomości"
+              maxLength={150}
               required
               error={errors.subject}
             />
@@ -119,6 +144,7 @@ export function ContactPage({ email }: { email: string }) {
               id="contact-message"
               name="message"
               label="Wiadomość"
+              maxLength={10000}
               required
               error={errors.message}
             />
@@ -130,6 +156,7 @@ export function ContactPage({ email }: { email: string }) {
               required
               error={errors.consent}
             />
+            <input type="hidden" name="website" value="" readOnly />
             <p className="contact-privacy">
               Szczegóły znajdziesz w{" "}
               <Link href="/polityka-prywatnosci">polityce prywatności</Link>.
