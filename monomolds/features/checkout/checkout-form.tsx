@@ -79,6 +79,7 @@ const fieldNameForError: Record<string, string> = {
 
 export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("inpost_locker");
+  const [pointHelpOpen, setPointHelpOpen] = useState(false);
   const [clientErrors, setClientErrors] = useState<Record<string, string[]>>({});
   const [wantsInvoice, setWantsInvoice] = useState(false);
   const [state, formAction, pending] = useActionState(submitGuestCheckout, initialCheckoutFormState);
@@ -151,12 +152,34 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
         <legend>Dostawa</legend>
         <div className="checkout-delivery-options" role="radiogroup" aria-describedby={errorFor(errors, "delivery.method") ? "delivery-method-error" : undefined}>
           {(["inpost_locker", "courier"] as const).map((method) => <label key={method} className="checkout-delivery-option">
-            <input type="radio" name="delivery-choice" checked={deliveryMethod === method} onChange={() => { setDeliveryMethod(method); setClientErrors({}); }} />
+            <input type="radio" name="delivery-choice" checked={deliveryMethod === method} onChange={() => { setDeliveryMethod(method); setPointHelpOpen(false); setClientErrors({}); }} />
             <span><strong>{deliveryLabel(method)}</strong><small>{formatPrice(quotes[method].delivery.priceGrosze)}</small></span>
           </label>)}
         </div>
         {errorFor(errors, "delivery.method") ? <p id="delivery-method-error" className="ui-field-error">{errorFor(errors, "delivery.method")}</p> : null}
-        {deliveryMethod === "inpost_locker" ? <TextField id="pointId" name="pointId" label="Paczkomat" autoComplete="off" spellCheck={false} required hint="Wpisz kod wybranego paczkomatu, np. WAW01A." error={errorFor(errors, "delivery.pointId")} /> : <div className="checkout-field-grid">
+        {deliveryMethod === "inpost_locker" ? <>
+          <TextField id="pointId" name="pointId" label="Paczkomat" autoComplete="off" spellCheck={false} required hint="Kod punktu, np. WAW01A." error={errorFor(errors, "delivery.pointId")} />
+          <div className={`checkout-point-help${pointHelpOpen ? " checkout-point-help--open" : ""}`}>
+            <button
+              className="checkout-point-help-trigger"
+              type="button"
+              aria-label="Jak znaleźć kod Paczkomatu?"
+              aria-expanded={pointHelpOpen}
+              aria-controls="pointId-help"
+              onClick={() => setPointHelpOpen((open) => !open)}
+            >
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9.6 9a2.5 2.5 0 0 1 4.8.8c0 1.7-2.4 2-2.4 3.7M12 17h.01" />
+              </svg>
+              <span>Gdzie znaleźć kod?</span>
+            </button>
+            <div id="pointId-help" className="checkout-point-help-content">
+              <p>Wpisz kod Paczkomatu, np. WAW01A</p>
+              <a href="https://inpost.pl/znajdz-paczkomat" target="_blank" rel="noreferrer">Otwórz wyszukiwarkę InPost</a>
+            </div>
+          </div>
+        </> : <div className="checkout-field-grid">
           <TextField id="addressLine1" name="addressLine1" label="Ulica i numer" autoComplete="street-address" required error={errorFor(errors, "delivery.address.line1")} />
           <TextField id="addressLine2" name="addressLine2" label="Lokal (opcjonalnie)" autoComplete="address-line2" />
           <TextField id="postalCode" name="postalCode" label="Kod pocztowy" autoComplete="postal-code" inputMode="numeric" placeholder="00-000" required error={errorFor(errors, "delivery.address.postalCode")} />
