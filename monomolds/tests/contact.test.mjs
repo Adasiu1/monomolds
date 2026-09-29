@@ -12,6 +12,7 @@ const validSubmission = {
   message: "Czy jest dostępna?",
   consent: true,
   website: "",
+  turnstileToken: "test-token",
 };
 
 function request(body) {
@@ -35,12 +36,46 @@ test("rejects invalid contact submissions before sending", async () => {
   }
 });
 
-test("sends a contact submission to Proton with the visitor as Reply-To", async () => {
+test("does not send email without a verified Turnstile token", async () => {
   const previousKey = process.env.RESEND_API_KEY;
+  const previousSecret = process.env.TURNSTILE_SECRET_KEY;
   const previousFetch = globalThis.fetch;
   process.env.RESEND_API_KEY = "re_test_only";
+  process.env.TURNSTILE_SECRET_KEY = "turnstile_test_only";
+  let emailCalls = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("siteverify")) return Response.json({ success: false });
+    emailCalls++;
+    return Response.json({ id: "unexpected" });
+  };
+  try {
+    for (const body of [{ ...validSubmission, turnstileToken: "" }, validSubmission]) {
+      const response = await POST(request(body));
+      assert.equal(response.status, 403);
+      assert.equal((await response.json()).code, "CAPTCHA_FAILED");
+    }
+    assert.equal(emailCalls, 0);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.RESEND_API_KEY;
+    else process.env.RESEND_API_KEY = previousKey;
+    if (previousSecret === undefined) delete process.env.TURNSTILE_SECRET_KEY;
+    else process.env.TURNSTILE_SECRET_KEY = previousSecret;
+  }
+});
+
+test("sends a contact submission to Proton with the visitor as Reply-To", async () => {
+  const previousKey = process.env.RESEND_API_KEY;
+  const previousSecret = process.env.TURNSTILE_SECRET_KEY;
+  const previousFetch = globalThis.fetch;
+  process.env.RESEND_API_KEY = "re_test_only";
+  process.env.TURNSTILE_SECRET_KEY = "turnstile_test_only";
   let sent;
-  globalThis.fetch = async (_url, options) => {
+  globalThis.fetch = async (url, options) => {
+    if (String(url).includes("siteverify")) {
+      assert.equal(new URLSearchParams(options.body).get("response"), "test-token");
+      return Response.json({ success: true, hostname: "localhost" });
+    }
     sent = options;
     return new Response(JSON.stringify({ id: "test-id" }), { status: 200 });
   };
@@ -60,6 +95,8 @@ test("sends a contact submission to Proton with the visitor as Reply-To", async 
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.RESEND_API_KEY;
     else process.env.RESEND_API_KEY = previousKey;
+    if (previousSecret === undefined) delete process.env.TURNSTILE_SECRET_KEY;
+    else process.env.TURNSTILE_SECRET_KEY = previousSecret;
   }
 });
 

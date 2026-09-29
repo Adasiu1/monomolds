@@ -98,6 +98,9 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .contact-privacy { color: var(--muted); font-size: .85rem; line-height: 1.65; }
 .contact-privacy a, .contact-email { color: var(--foreground); text-underline-offset: .2rem; }
 .contact-submit { width: 100%; }
+.contact-challenge--open { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: .5rem; background: rgb(0 0 0 / .88); }
+.contact-challenge--open p { font-weight: 600; }
+.contact-challenge--open .ui-button { min-width: 10rem; }
 .contact-details { align-self: start; max-width: 28rem; padding-top: .2rem; border-top: 1px solid var(--border); }
 .contact-details h2 { margin-top: 1.25rem; }
 .contact-details p { margin-top: 1rem; color: var(--muted); line-height: 1.7; }

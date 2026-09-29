@@ -16,23 +16,53 @@ export async function POST(request: Request) {
   }
 
   let submission;
+  let turnstileToken: unknown;
   try {
     const body = await request.text();
     if (new TextEncoder().encode(body).length > maxBodyBytes) {
       return result(413, "TOO_LARGE", "Wiadomość jest za długa.");
     }
-    submission = parseContactSubmission(JSON.parse(body));
+    const payload = JSON.parse(body);
+    submission = parseContactSubmission(payload);
+    turnstileToken = payload?.turnstileToken;
   } catch {
     return result(400, "INVALID_INPUT", "Sprawdź dane formularza i spróbuj ponownie.");
   }
   if (!submission) {
     return result(400, "INVALID_INPUT", "Sprawdź dane formularza i spróbuj ponownie.");
   }
+  if (typeof turnstileToken !== "string" || !turnstileToken || turnstileToken.length > 2048) {
+    return result(403, "CAPTCHA_FAILED", "Nie udało się potwierdzić weryfikacji. Spróbuj ponownie.");
+  }
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.error("contact_email_not_configured");
     return result(503, "UNAVAILABLE", "Wysyłanie jest chwilowo niedostępne. Napisz do nas bezpośrednio na adres e-mail.");
+  }
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+  if (!turnstileSecret) {
+    console.error("contact_turnstile_not_configured");
+    return result(503, "UNAVAILABLE", "Wysyłanie jest chwilowo niedostępne. Napisz do nas bezpośrednio na adres e-mail.");
+  }
+
+  try {
+    const verification = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: new URLSearchParams({ secret: turnstileSecret, response: turnstileToken }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!verification.ok) throw new Error("siteverify_unavailable");
+    const verdict: { success?: boolean; hostname?: string } = await verification.json();
+    if (!verdict.success || (
+      process.env.NODE_ENV === "production" &&
+      verdict.hostname !== "monomolds.com" && verdict.hostname !== "www.monomolds.com"
+    )) {
+      return result(403, "CAPTCHA_FAILED", "Nie udało się potwierdzić weryfikacji. Spróbuj ponownie.");
+    }
+  } catch {
+    console.error("contact_turnstile_unavailable");
+    return result(503, "CAPTCHA_UNAVAILABLE", "Weryfikacja jest chwilowo niedostępna. Spróbuj ponownie później.");
   }
 
   try {
