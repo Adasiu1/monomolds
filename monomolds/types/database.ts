@@ -460,8 +460,62 @@ export type Database = {
           },
         ]
       }
+      payment_attempts: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          expires_at: string
+          id: string
+          order_id: string
+          provider: string
+          provider_order_id: number | null
+          provider_token: string | null
+          session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency: string
+          expires_at?: string
+          id?: string
+          order_id: string
+          provider?: string
+          provider_order_id?: number | null
+          provider_token?: string | null
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          order_id?: string
+          provider?: string
+          provider_order_id?: number | null
+          provider_token?: string | null
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_attempts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_events: {
         Row: {
+          attempt_id: string | null
           created_at: string
           event_type: string
           id: string
@@ -470,8 +524,10 @@ export type Database = {
           provider: string
           provider_event_id: string
           status: string
+          updated_at: string
         }
         Insert: {
+          attempt_id?: string | null
           created_at?: string
           event_type: string
           id?: string
@@ -480,8 +536,10 @@ export type Database = {
           provider: string
           provider_event_id: string
           status: string
+          updated_at?: string
         }
         Update: {
+          attempt_id?: string | null
           created_at?: string
           event_type?: string
           id?: string
@@ -490,8 +548,16 @@ export type Database = {
           provider?: string
           provider_event_id?: string
           status?: string
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_events_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "payment_attempts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_events_order_id_fkey"
             columns: ["order_id"]
@@ -645,6 +711,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_verified_payment: {
+        Args: { p_attempt_id: string; p_provider_order_id: number }
+        Returns: string
+      }
       create_checkout_quote: {
         Args: {
           p_delivery_method: string
@@ -671,6 +741,14 @@ export type Database = {
         Returns: Json
       }
       get_guest_order_status: {
+        Args: {
+          p_guest_token_hash: string
+          p_phone: string
+          p_request_fingerprint: string
+        }
+        Returns: Json
+      }
+      prepare_guest_payment: {
         Args: {
           p_guest_token_hash: string
           p_phone: string

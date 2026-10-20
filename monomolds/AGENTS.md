@@ -120,11 +120,11 @@ verification, while `MON-42` is in progress.
 
 Known unfinished or temporary behavior:
 
-- No real payment initialization, hosted payment redirect, verified payment
-  webhook, or end-to-end payment flow exists yet.
-- The domain contract currently names Przelewy24, but provider selection is still
-  tracked by `MON-28`. Confirm that decision before implementing payments; do not
-  build both PayU and Przelewy24.
+- Przelewy24 is the selected MVP provider (owner decision, 20 October 2026).
+  The sandbox adapter, hosted redirect, verified webhook, durable recovery, and
+  payment status/retry flow are implemented. See `docs/przelewy24-payments.md`.
+  Real sandbox acceptance and preview configuration must be verified before
+  considering MON-24 complete. Production payments are deliberately disabled.
 - No Brevo integration or transactional email delivery exists. The order-link
   recovery UI currently exposes a generated link for development; production must
   send it securely by email and must not reveal it in the browser response.
@@ -140,13 +140,11 @@ Known unfinished or temporary behavior:
 
 Do not skip directly to launch work. The immediate backlog is:
 
-1. Finish and verify the guest order status flow (`MON-42`).
-2. Confirm the payment provider and payment contract (`MON-28`).
-3. Initialize sandbox payments (`MON-26`).
-4. Implement a verified, idempotent payment webhook (`MON-25`).
-5. Build payment pending/success/cancellation/failure states and complete the
-   customer order-status experience (`MON-29`).
-6. Test order and payment end to end in the provider sandbox (`MON-24`).
+1. MON-42 and MON-29 are marked Done in Jira. Preserve their guest status UI.
+2. Verify the P24 implementation against MON-28, MON-26, and MON-25 acceptance
+   criteria on an isolated HTTPS sandbox deployment.
+3. Test order and payment end to end in the provider sandbox (`MON-24`).
+   Do not mark it complete based only on mocked adapter tests.
 7. Add Brevo transactional emails (`MON-27`), the contact page/form (`MON-30`),
    and its server-side Brevo handling (`MON-31`).
 8. Complete trust/legal pages, SEO, accessibility, performance, monitoring,
@@ -194,13 +192,16 @@ Order states:
 
 ```text
 pending_payment -> paid | cancelled | expired
-expired         -> pending_payment
+expired         -> pending_payment | paid (verified late payment only)
 paid            -> processing | cancelled
 processing      -> shipped | cancelled
 shipped         -> completed
 ```
 
-Only a verified provider webhook may transition an order to `paid`. A browser
+Only a verified provider webhook (including replay of its durable notification)
+may transition an order to `paid`. A verified late payment may settle an expired
+attempt/order. Payments after order cancellation and second genuine payments are
+recorded as `review_required` without reopening the order. A browser
 redirect is never proof of payment. Webhook processing must be signed, idempotent,
 and safe for duplicate or out-of-order events.
 

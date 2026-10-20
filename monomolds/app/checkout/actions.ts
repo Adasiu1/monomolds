@@ -1,5 +1,7 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { beginGuestPayment } from "@/lib/payments/guest-payment";
 import type { CheckoutInput, ContractFieldErrors } from "@/lib/commerce/contracts";
 import { COMMERCE_CONFIG } from "@/lib/commerce/config";
 import { isValidPolishNip, normalizePolishNip } from "@/lib/commerce/nip";
@@ -130,9 +132,12 @@ export async function submitGuestCheckout(
     };
   }
 
+  const payment = await beginGuestPayment(guestOrderToken, phone, await requestFingerprint());
+  if (payment.ok) redirect(payment.redirectUrl);
+
   return {
     status: "success",
-    message: "Zamówienie zostało bezpiecznie zapisane.",
+    message: payment.message,
     fieldErrors: {},
     retryable: false,
     refreshSummary: false,

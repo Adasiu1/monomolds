@@ -343,7 +343,15 @@ export type CheckoutResult = ContractResult<CheckoutSuccess, CheckoutErrorCode>;
 
 export type CommerceErrorCode = QuoteErrorCode | CheckoutErrorCode;
 
+export type PublicPaymentStatus = {
+  status: PaymentAttemptStatus | "unpaid";
+  expiresAt: string | null;
+  canRetry: boolean;
+  reviewRequired: boolean;
+};
+
 export type PublicOrderStatus = {
+  payment?: PublicPaymentStatus;
   orderNumber: string;
   status: OrderStatus;
   createdAt: string;

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test tests/*.test.mjs"
+    "test": "tsx --test tests/*.test.mjs",
+    "payments:check": "node --env-file=.env.local --import tsx scripts/payments.mjs check",
+    "payments:reconcile": "node --env-file=.env.local --import tsx scripts/payments.mjs reconcile"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

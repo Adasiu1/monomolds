@@ -35,3 +35,5 @@
   .order-status-badge { align-self: start; }
   .order-status-item > span:last-child { color: var(--muted); font-size: .9rem; }
 }
+
+.order-payment-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
