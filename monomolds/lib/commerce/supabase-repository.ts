@@ -181,7 +181,11 @@ export async function getGuestOrderStatus(token: string, phone: string, requestF
     const payment: PublicPaymentStatus = {
       status: ["paid", "processing", "shipped", "completed"].includes(order.status)
         ? "paid"
-        : (attempt?.status as PublicPaymentStatus["status"] | undefined) ?? "unpaid",
+        : order.status === "cancelled" && attempt?.status !== "paid"
+          ? "cancelled"
+          : order.status === "expired" && !attempt
+            ? "expired"
+            : (attempt?.status as PublicPaymentStatus["status"] | undefined) ?? "unpaid",
       expiresAt: attempt?.expires_at ?? null,
       canRetry: !reviewRequired && ["pending_payment", "expired"].includes(order.status),
       reviewRequired,

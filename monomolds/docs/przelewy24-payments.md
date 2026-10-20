@@ -7,7 +7,7 @@ refunds, or production payment support is included.
 ## Local testing without Vercel
 
 The existing Docker Supabase instance is sufficient for sandbox testing. No cloud
-project is required. The P24 branch runs in the worktree, separately from `main`.
+project is required. The primary checkout is on `orfin/MON-28-przelewy24-sandbox`; `main` remains separate.
 
 1. Start Docker Desktop and the existing local Supabase stack. Do not reset the
    database: the payment migration is additive and has already been applied locally.
@@ -143,3 +143,17 @@ For MON-24, record actual sandbox outcomes and provider transaction references
 MON-29 is marked Done in Jira, but its real-provider wiring was absent before this
 change. Revalidate it as part of MON-24. Mocked tests do not establish real sandbox
 acceptance. Do not mark Jira stories complete until their actual criteria pass.
+
+## Local verification log — 20 October 2026
+
+- 56 application tests pass; lint and production build pass.
+- All 27 P24 SQL assertions pass, including a fresh migration inside a rolled-back
+  transaction. Existing guest-order (13), pricing (35), and model (2) SQL tests pass.
+  Regression fixtures were isolated transactionally from existing local orders and
+  an active local discount; no local customer data was removed.
+- Browser: synthetic local checkout persists its order when credentials are absent;
+  a wrong phone is rejected; the correct phone reveals status and retry/refresh.
+  Checked 390 px mobile and 1440 px desktop layouts and keyboard focus.
+- HTTPS tunnel responds after moving the branch into the primary checkout.
+- Real sandbox registration/payment/notification acceptance is pending local API
+  credentials and the end-to-end test. This is not evidence of completed MON-24.
