@@ -11,36 +11,33 @@ type ModelStatus = "loading" | "ready" | "error";
 export function ProductGallery({ media, productName }: { media: CatalogueMedia[]; productName: string }) {
   const [selectedId, setSelectedId] = useState(media[0]?.id ?? "");
   const selected = media.find((item) => item.id === selectedId) ?? media[0];
-
-  if (!selected) {
-    return (
-      <div className="product-gallery product-gallery--empty">
-        <div className="product-gallery-stage">
-          <ProductImage alt={productName} sizes="(max-width: 1023px) 100vw, 58vw" />
-        </div>
-      </div>
-    );
-  }
+  const images = media.filter((item) => item.kind === "image");
+  const thumbnails = [
+    ...images,
+    ...Array<null>(Math.max(0, 3 - images.length)).fill(null),
+    ...media.filter((item) => item.kind === "model"),
+  ];
 
   return (
     <div className="product-gallery">
       <div className="product-gallery-stage" aria-live="polite">
-        {selected.kind === "image" ? (
+        {!selected ? (
+          <ProductImage alt={productName} sizes="(max-width: 1023px) 100vw, 58vw" />
+        ) : selected.kind === "image" ? (
           <ProductImage src={selected.url} alt={selected.alt} sizes="(max-width: 1023px) 100vw, 58vw" />
         ) : (
           <ProductModel media={selected} />
         )}
       </div>
 
-      {media.length > 1 ? (
-        <div className="product-gallery-thumbnails" aria-label="Galeria produktu">
-          {media.map((item, index) => (
+      <div className="product-gallery-thumbnails" aria-label="Galeria produktu">
+        {thumbnails.map((item, index) => item ? (
             <button
               key={item.id}
               type="button"
               className="product-gallery-thumbnail"
               aria-label={item.kind === "model" ? "Pokaż model 3D" : `Pokaż zdjęcie ${index + 1}`}
-              aria-pressed={item.id === selected.id}
+              aria-pressed={item.id === selected?.id}
               onClick={() => setSelectedId(item.id)}
             >
               {item.kind === "image" ? (
@@ -49,9 +46,13 @@ export function ProductGallery({ media, productName }: { media: CatalogueMedia[]
                 <span className="product-gallery-model-label" aria-hidden="true">3D</span>
               )}
             </button>
-          ))}
-        </div>
-      ) : null}
+          ) : (
+            <span key={`photo-placeholder-${index}`} className="product-gallery-thumbnail product-gallery-thumbnail--placeholder" role="img" aria-label={`Zdjęcie ${index + 1} w przygotowaniu`}>
+              <svg aria-hidden="true" width="22" height="22" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="6" y="8" width="36" height="32" rx="4"/><circle cx="17" cy="18" r="3"/><path d="m7 34 12-10 8 6 7-6 7 9"/></svg>
+              <span>Wkrótce</span>
+            </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -111,7 +112,7 @@ function ProductModel({ media }: { media: Extract<CatalogueMedia, { kind: "model
       <div ref={mountRef} className="product-model-canvas" aria-hidden={status !== "ready"} />
       {status !== "ready" ? (
         <div className="product-model-status" role="status">
-          <p>{status === "loading" ? "Ładujemy model 3D..." : "Nie udało się wczytać modelu 3D."}</p>
+          <p>{status === "loading" ? "Ładujemy model 3D…" : "Nie udało się wczytać modelu 3D."}</p>
           {status === "error" ? (
             <button type="button" className="footer-link" onClick={() => setAttempt((value) => value + 1)}>
               Spróbuj ponownie

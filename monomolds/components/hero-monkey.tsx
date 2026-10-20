@@ -2,16 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ModelViewerElement } from "@google/model-viewer";
+import { LinkButton } from "@/components/ui/button";
 
 // Starting camera view: sideways angle, vertical angle and distance from the model.
 const DEFAULT_ORBIT = "65deg 75deg 100%";
-const DEFAULT_SUPABASE_URL = "https://sviceapzwbnqfdpznvtn.supabase.co";
-const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? DEFAULT_SUPABASE_URL)
-  .replace(/\/rest\/v1\/?$/, "")
-  .replace(/\/+$/, "");
-const MONKEY_MODEL_URL = `${SUPABASE_URL}/storage/v1/object/public/product-models/products/Monkey.glb`;
-
-export function HeroMonkey() {
+export function HeroMonkey({ modelUrl }: { modelUrl: string }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<((instant?: boolean) => void) | null>(null);
   const [active, setActive] = useState(false);
@@ -105,7 +100,7 @@ export function HeroMonkey() {
         // Size the custom element explicitly as well as in CSS. Its native
         // 300 x 150 fallback otherwise makes the model look like a thumbnail.
         Object.assign(viewer.style, { display: "block", width: "100%", height: "100%", background: "transparent", border: "0", userSelect: "none" });
-        viewer.src = MONKEY_MODEL_URL;
+        viewer.src = modelUrl;
         viewer.alt = "Model 3D małpki. Włącz obracanie przyciskiem poniżej, a następnie przeciągnij model lub użyj strzałek.";
         viewer.cameraOrbit = DEFAULT_ORBIT;
         viewer.interactionPrompt = "none";
@@ -155,17 +150,18 @@ export function HeroMonkey() {
       viewer?.removeEventListener("touchcancel", touchEnded);
       viewer?.remove();
     };
-  }, [attempt]);
+  }, [attempt, modelUrl]);
 
   return (
     <div className="hero-monkey" data-active={active} style={{ width: "100%", minWidth: 0 }}>
       <div ref={mountRef} className="hero-monkey-canvas" data-ready={status === "ready"} inert={status !== "ready"} aria-hidden={status !== "ready"} style={{ width: "100%", height: "clamp(360px, 62vw, 680px)" }} />
-      <div className="hero-monkey-controls" style={{ textAlign: "center", minHeight: 76 }}>
+      <div className="hero-monkey-controls">
         <p role="status" className="hero-monkey-status text-xs text-[var(--muted)]" data-loading={status === "loading"}>
           {status === "loading" ? "Ładowanie modelu 3D…" : status === "error" ? "Nie udało się wczytać modelu 3D." : active ? "Przeciągnij, aby obrócić. Kliknij ponownie lub poza modelem, aby zresetować." : "Kliknij małpkę, aby włączyć obracanie."}
         </p>
         {status === "ready" ? <button type="button" className="footer-link" aria-pressed={active} onClick={(event) => toggleRef.current?.(event.detail === 0)}>{active ? "Zresetuj widok" : "Włącz obracanie"}</button> : null}
         {status === "error" ? <button type="button" className="footer-link" onClick={() => { setStatus("loading"); setActive(false); setAttempt((value) => value + 1); }}>Spróbuj ponownie</button> : null}
+        <LinkButton href="/sklep/forma-malpka-100-ml" variant="secondary" className="hero-monkey-product-link">Sprawdź formę Małpka <span aria-hidden="true">→</span></LinkButton>
       </div>
     </div>
   );

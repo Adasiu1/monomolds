@@ -180,7 +180,12 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .product-gallery-thumbnail[aria-pressed="true"] { border-color: var(--accent); outline: 1px solid var(--accent); outline-offset: 2px; }
 .product-gallery-thumbnail:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .product-gallery-thumbnail .ui-product-image { object-fit: cover; }
+.product-gallery-thumbnail--placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; border-style: dashed; color: var(--muted); font-size: .65rem; cursor: default; }
 .product-gallery-model-label { display: grid; width: 100%; height: 100%; place-items: center; color: var(--accent); font-size: .9rem; font-weight: 700; letter-spacing: .08em; }
+@media (max-width: 639px) {
+  .product-gallery-thumbnails { gap: .5rem; }
+  .product-gallery-thumbnail { width: 72px; height: 84px; }
+}
 .product-model, .product-model-canvas { width: 100%; height: 100%; }
 .product-model { position: relative; }
 .product-model-canvas { display: grid; place-items: center; }

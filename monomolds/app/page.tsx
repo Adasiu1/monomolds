@@ -3,8 +3,11 @@ import Image from "next/image";
 import { PageTransitionLink } from "@/components/page-transition";
 import { LinkButton } from "@/components/ui/button";
 import { HeroMonkey } from "@/components/hero-monkey";
+import { getPublishedCatalogueDetail } from "@/lib/catalogue/repository";
 
 import "./home.css";
+
+export const dynamic = "force-dynamic";
 
 const brandBenefits = [
   {
@@ -21,11 +24,16 @@ const brandBenefits = [
   },
 ] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const result = await getPublishedCatalogueDetail("forma-malpka-100-ml", "product");
+  const monkeyModel = result.status === "ready"
+    ? result.item.media.find((media) => media.kind === "model")
+    : null;
+
   return (
     <div className="site-container">
       {/* Hero: explain the offer, link to Formy, and show the optional 3D model. */}
-      <section className="home-hero" aria-labelledby="home-title">
+      <section className={`home-hero${monkeyModel ? "" : " home-hero--no-model"}`} aria-labelledby="home-title">
         <div className="home-intro">
           <p className="eyebrow">Ręcznie wykonywane w Polsce</p>
           <h1 id="home-title">
@@ -45,7 +53,7 @@ export default function HomePage() {
             </LinkButton>
           </div>
         </div>
-        <HeroMonkey />
+        {monkeyModel ? <HeroMonkey modelUrl={monkeyModel.url} /> : null}
       </section>
 
       {/* Reserved product spaces will receive real catalogue media later. */}

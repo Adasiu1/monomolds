@@ -53,7 +53,7 @@ set
 
 insert into public.product_details (product_id, capacity_ml, material, care_instructions, model_storage_path, model_alt_text)
 values
-  ('00000000-0000-0000-0000-000000000001', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], null, null),
+  ('00000000-0000-0000-0000-000000000001', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], 'products/forma-malpka-100-ml/monkey.glb', 'Model 3D formy Małpka 100 ml'),
   ('00000000-0000-0000-0000-000000000002', 130, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], null, null),
   ('00000000-0000-0000-0000-000000000003', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], null, null),
   ('00000000-0000-0000-0000-000000000005', 100, 'Silikon platynowy', array['Myć ciepłą wodą z płynem do naczyń i miękką gąbką.', 'Dokładnie wypłukać i pozostawić do wyschnięcia.'], 'products/forma-kokos-100-ml/kokos.glb', 'Interaktywny model 3D formy Kokos 100 ml')
