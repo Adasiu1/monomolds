@@ -1,5 +1,9 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { beginGuestPayment, reconcilePaymentEvents } from "@/lib/payments/guest-payment";
+import { paymentDatabase } from "@/lib/payments/repository";
+import { hashGuestToken } from "@/lib/payments/service";
 import type { PublicOrderStatus } from "@/lib/commerce/contracts";
 import {
   isGuestPhone,
@@ -20,7 +24,17 @@ export async function readGuestOrderStatus(token: string, phone: string): Promis
   if (!isGuestOrderToken(token) || !isGuestPhone(phone)) {
     return { ok: false, message: safeErrorMessage };
   }
-  const order = await getGuestOrderStatus(token, normalizeGuestPhone(phone), await requestFingerprint());
+  const fingerprint = await requestFingerprint();
+  let order = await getGuestOrderStatus(token, normalizeGuestPhone(phone), fingerprint);
+  if (order && process.env.P24_ENV === "sandbox") {
+    try {
+      const identity = await paymentDatabase().from("orders").select("id").eq("guest_token_hash", hashGuestToken(token))
+        .eq("phone", normalizeGuestPhone(phone)).single();
+      if (identity.data && (await reconcilePaymentEvents(identity.data.id)).completed > 0) {
+        order = await getGuestOrderStatus(token, normalizeGuestPhone(phone), fingerprint);
+      }
+    } catch { /* Status remains readable during a provider outage. */ }
+  }
   return order
     ? { ok: true, order }
     : { ok: false, message: safeErrorMessage };
@@ -37,7 +51,7 @@ export async function readGuestOrderStatusAction(
     typeof phone === "string" ? phone.trim() : "",
   );
   return result.ok
-    ? { status: "success", message: null, order: result.order }
+    ? { status: "success", message: null, order: result.order, phone: normalizeGuestPhone(typeof phone === "string" ? phone : "") }
     : { status: "error", message: result.message, order: null };
 }
 
@@ -74,11 +88,18 @@ export async function resendGuestOrderStatusLinkAction(
   const order = await getGuestOrderStatus(result.token, normalizeGuestPhone(phoneValue), fingerprint);
   if (!order) return { status: "error", message: safeErrorMessage, link: null, order: null };
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   return {
     status: "success",
     message: "Wygenerowano nowy link do statusu zamówienia.",
+    phone: normalizeGuestPhone(phoneValue),
     link: `${origin.replace(/\/$/, "")}/zamowienie/status?token=${encodeURIComponent(result.token)}`,
     order,
   };
+}
+
+export async function startGuestPaymentAction(token: string, phone: string) {
+  const result = await beginGuestPayment(token, phone, await requestFingerprint());
+  if (result.ok) redirect(result.redirectUrl);
+  return result;
 }

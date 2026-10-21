@@ -12,6 +12,7 @@ import type {
   CommerceRepository,
   ItemError,
   PublicOrderStatus,
+  PublicPaymentStatus,
   Quote,
   QuoteErrorCode,
   QuoteInput,
@@ -162,13 +163,36 @@ export async function getGuestOrderStatus(token: string, phone: string, requestF
     if (error || !data) {
       console.error("Guest order status RPC failed.", {
         code: error?.code ?? "NO_DATA",
-        message: error?.message ?? "RPC returned no data",
       });
       return null;
     }
-    return data as PublicOrderStatus;
-  } catch (error) {
-    console.error("Guest order status request failed.", error);
+    const order = data as PublicOrderStatus;
+    const db = client();
+    const identity = await db.from("orders").select("id").eq("guest_token_hash", digest(token)).eq("phone", phone.replace(/\D/g, "")).single();
+    if (identity.error || !identity.data) return null;
+    const orderId = identity.data.id;
+    const [attemptResult, reviewResult] = await Promise.all([
+      db.from("payment_attempts").select("status,expires_at").eq("order_id", orderId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("payment_events").select("id").eq("order_id", orderId).eq("status", "review_required").limit(1),
+    ]);
+    if (attemptResult.error || reviewResult.error) return null;
+    const attempt = attemptResult.data;
+    const reviewRequired = Boolean(reviewResult.data?.length);
+    const payment: PublicPaymentStatus = {
+      status: ["paid", "processing", "shipped", "completed"].includes(order.status)
+        ? "paid"
+        : order.status === "cancelled" && attempt?.status !== "paid"
+          ? "cancelled"
+          : order.status === "expired" && !attempt
+            ? "expired"
+            : (attempt?.status as PublicPaymentStatus["status"] | undefined) ?? "unpaid",
+      expiresAt: attempt?.expires_at ?? null,
+      canRetry: !reviewRequired && ["pending_payment", "expired"].includes(order.status),
+      reviewRequired,
+    };
+    return { ...order, payment };
+  } catch {
+    console.error("Guest order status request failed.");
     return null;
   }
 }
@@ -189,7 +213,6 @@ export async function resendGuestOrderStatusLink(
       if (error || !data || typeof data !== "object" || Array.isArray(data)) {
         console.error("Guest order status link RPC failed.", {
           code: error?.code ?? "NO_DATA",
-          message: error?.message ?? "RPC returned no data",
         });
         return null;
       }

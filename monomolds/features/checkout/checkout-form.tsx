@@ -98,7 +98,7 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
     return <section className="checkout-confirmation" aria-labelledby="checkout-confirmation-title">
       <p className="checkout-confirmation-eyebrow">Zamówienie przyjęte</p>
       <h1 id="checkout-confirmation-title">{state.orderNumber}</h1>
-      <Notice tone="success" title="Zamówienie zapisane">Status płatności: oczekuje na płatność. Na tym etapie płatność nie została jeszcze uruchomiona.</Notice>
+      <Notice tone="success" title="Zamówienie zapisane">{state.message ?? "Zamówienie oczekuje na płatność. Przejdź do statusu, aby ją rozpocząć."}</Notice>
       <p>Zachowaj link do statusu. Przy sprawdzaniu poprosimy także o pełny numer telefonu podany w zamówieniu.</p>
       <LinkButton href={state.statusPath}>Sprawdź status zamówienia</LinkButton>
     </section>;
