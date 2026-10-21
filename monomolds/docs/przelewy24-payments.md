@@ -1,5 +1,8 @@
 # Przelewy24 sandbox payments
 
+For installation, teammate handoff, daily startup, and local versus hosted database
+steps, see [the sandbox handoff guide](przelewy24-handoff.md).
+
 Owner decision: 20 October 2026. Przelewy24 is the only MVP payment provider.
 Use the hosted P24 payment page. No embedded BLIK, card collection, automated
 refunds, or production payment support is included.
