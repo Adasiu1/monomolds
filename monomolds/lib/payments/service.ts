@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { createP24Client, parseNotification, PaymentProviderError, validNotificationSign, type P24Config, type PaymentNotification } from './przelewy24';
+import { createP24Client, parseNotification, PaymentProviderError, validNotificationSign, type P24Config, type ProviderTransaction, type PaymentNotification } from './przelewy24';
 
 export type PaymentAttempt = {
   id: string; order_id: string; session_id: string; status: 'created'|'pending'|'paid'|'failed'|'cancelled'|'expired';
@@ -13,6 +13,7 @@ export type PaymentStore = {
   endAttempt(id: string, status: 'failed'|'expired'): Promise<void>;
   findAttempt(sessionId: string): Promise<PaymentAttempt | null>;
   recordNotification(attempt: PaymentAttempt, notification: PaymentNotification): Promise<StoredPaymentEvent>;
+  recordRecovery(attempt: PaymentAttempt, transaction: ProviderTransaction): Promise<StoredPaymentEvent>;
   complete(attemptId: string, providerOrderId: number): Promise<void>;
 };
 export type StartPaymentResult = { ok: true; attemptId: string; expiresAt: string; redirectUrl: string }
@@ -21,7 +22,32 @@ export const hashGuestToken = (token: string) => createHash('sha256').update(tok
 
 export function createPaymentService(store: PaymentStore, config: P24Config, fetcher: typeof fetch = fetch, now = () => Date.now()) {
   const provider = createP24Client(config, fetcher);
+  async function verifyAndComplete(attempt: PaymentAttempt, confirmation: Pick<PaymentNotification, 'sessionId'|'orderId'|'amount'|'currency'>) {
+    try { await provider.verify(confirmation); }
+    catch (error) {
+      const transaction = await provider.lookup(confirmation.sessionId);
+      if (!transaction || transaction.status !== 2 || transaction.orderId !== confirmation.orderId
+        || transaction.amount !== attempt.amount || transaction.currency !== attempt.currency) throw error;
+    }
+    await store.complete(attempt.id, confirmation.orderId);
+  }
   return {
+    async recover(sessionId: string) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(sessionId)) throw new PaymentProviderError('INVALID_SESSION');
+      const attempt = await store.findAttempt(sessionId);
+      if (!attempt || attempt.session_id !== sessionId) throw new PaymentProviderError('PAYMENT_MISMATCH');
+      const transaction = await provider.lookup(sessionId);
+      if (!transaction || transaction.status === 0) return { status: 'unpaid' as const };
+      if (![1,2].includes(transaction.status) || transaction.amount !== attempt.amount || transaction.currency !== attempt.currency
+        || transaction.sessionId !== attempt.session_id || transaction.orderId < 1
+        || (attempt.provider_order_id !== null && attempt.provider_order_id !== transaction.orderId)) throw new PaymentProviderError('PAYMENT_MISMATCH');
+      const event = await store.recordRecovery(attempt, transaction);
+      if (event.attempt_id !== attempt.id) throw new PaymentProviderError('PAYMENT_MISMATCH');
+      if (event.status === 'verified' || event.status === 'review_required') return { status: 'already_processed' as const };
+      // Recovery uses authenticated provider data, never a fabricated webhook signature.
+      await verifyAndComplete(attempt, transaction);
+      return { status: 'processed' as const };
+    },
     async start(token: string, phone: string, fingerprint: string): Promise<StartPaymentResult> {
       let prepared;
       try { prepared = await store.prepare(hashGuestToken(token), phone, fingerprint); }
@@ -64,13 +90,7 @@ export function createPaymentService(store: PaymentStore, config: P24Config, fet
       if (event.attempt_id !== attempt.id) throw new PaymentProviderError('PAYMENT_MISMATCH');
       if (event.status === 'verified' || event.status === 'review_required') return;
       // Save before verifying: P24 can stop notifications once verification succeeds.
-      try { await provider.verify(notification); }
-      catch (error) {
-        const transaction = await provider.lookup(notification.sessionId);
-        if (!transaction || transaction.status !== 2 || transaction.orderId !== notification.orderId
-          || transaction.amount !== attempt.amount || transaction.currency !== attempt.currency) throw error;
-      }
-      await store.complete(attempt.id, notification.orderId);
+      await verifyAndComplete(attempt, notification);
     },
   };
 }

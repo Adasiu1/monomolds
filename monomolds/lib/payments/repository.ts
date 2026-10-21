@@ -12,6 +12,15 @@ export function paymentDatabase() {
 
 export function createPaymentStore(): PaymentStore {
   const db = paymentDatabase();
+  async function recordEvent(attempt: PaymentAttempt, providerOrderId: number, eventType: string, payload: Json) {
+    const { error } = await db.from('payment_events').upsert({ order_id: attempt.order_id, attempt_id: attempt.id,
+      provider: 'przelewy24', provider_event_id: String(providerOrderId), event_type: eventType, status: 'received', payload },
+      { onConflict: 'provider,provider_event_id', ignoreDuplicates: true });
+    if (error) throw new Error('PAYMENT_DATABASE_UNAVAILABLE');
+    const result = await db.from('payment_events').select('attempt_id,status,payload').eq('provider','przelewy24').eq('provider_event_id',String(providerOrderId)).single();
+    if (result.error || !result.data) throw new Error('PAYMENT_DATABASE_UNAVAILABLE');
+    return result.data as StoredPaymentEvent;
+  }
   return {
     async prepare(hash, phone, fingerprint) {
       const { data, error } = await db.rpc('prepare_guest_payment', { p_guest_token_hash: hash, p_phone: phone, p_request_fingerprint: fingerprint });
@@ -34,13 +43,13 @@ export function createPaymentStore(): PaymentStore {
       return data as PaymentAttempt | null;
     },
     async recordNotification(attempt, notification) {
-      const { error } = await db.from('payment_events').upsert({ order_id: attempt.order_id, attempt_id: attempt.id,
-        provider: 'przelewy24', provider_event_id: String(notification.orderId), event_type: 'payment_notification', status: 'received',
-        payload: notification as unknown as Json }, { onConflict: 'provider,provider_event_id', ignoreDuplicates: true });
-      if (error) throw new Error('PAYMENT_DATABASE_UNAVAILABLE');
-      const result = await db.from('payment_events').select('attempt_id,status,payload').eq('provider','przelewy24').eq('provider_event_id',String(notification.orderId)).single();
-      if (result.error || !result.data) throw new Error('PAYMENT_DATABASE_UNAVAILABLE');
-      return result.data as StoredPaymentEvent;
+      return recordEvent(attempt, notification.orderId, 'payment_notification', notification as unknown as Json);
+    },
+    async recordRecovery(attempt, transaction) {
+      return recordEvent(attempt, transaction.orderId, 'payment_recovery', {
+        sessionId: transaction.sessionId, orderId: transaction.orderId, amount: transaction.amount,
+        currency: transaction.currency, providerStatus: transaction.status, source: 'authenticated_provider_api',
+      });
     },
     async complete(attemptId, providerOrderId) {
       const { error } = await db.rpc('complete_verified_payment', { p_attempt_id: attemptId, p_provider_order_id: providerOrderId });

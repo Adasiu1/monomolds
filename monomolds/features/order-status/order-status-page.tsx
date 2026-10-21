@@ -31,9 +31,6 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
     initialResendGuestOrderLinkState,
   );
 
-  const [phone, setPhone] = useState("");
-  const [recoveryPhone, setRecoveryPhone] = useState("");
-
   return (
     <div className="site-container order-status-page">
       <div className="order-status-layout">
@@ -46,7 +43,7 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
         </header>
 
         {isGuestOrderToken(initialToken) ? (
-          <form action={formAction} className="order-status-form" noValidate onSubmit={(event) => setPhone(String(new FormData(event.currentTarget).get("phone") ?? ""))}>
+          <form action={formAction} className="order-status-form" noValidate>
             <input type="hidden" name="token" value={initialToken} />
             <div className="ui-field">
               <label htmlFor="guest-order-phone">Numer telefonu</label>
@@ -81,7 +78,7 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
           </p>
         ) : null}
 
-        {state.status === "success" && <VerifiedOrder key={`${initialToken}:${phone}`} initialOrder={state.order} token={initialToken} phone={phone} />}
+        {state.status === "success" && <VerifiedOrder key={`${initialToken}:${state.phone}`} initialOrder={state.order} token={initialToken} phone={state.phone} />}
         {resendState.status === "success" && resendState.order && (
           <>
             <p className="ui-notice ui-notice--success" role="status">
@@ -93,7 +90,7 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
                 <a href={resendState.link}>{resendState.link}</a>
               </p>
             )}
-            <VerifiedOrder key={resendState.link} initialOrder={resendState.order} token={resendState.link ? new URL(resendState.link).searchParams.get("token") ?? "" : ""} phone={recoveryPhone} />
+            <VerifiedOrder key={resendState.link} initialOrder={resendState.order} token={resendState.link ? new URL(resendState.link).searchParams.get("token") ?? "" : ""} phone={resendState.phone ?? ""} />
           </>
         )}
         {state.status !== "success" && resendState.status !== "success" && (
@@ -102,7 +99,6 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
             action={resendAction}
             pending={resendPending}
             open={!initialToken}
-            onPhone={setRecoveryPhone}
           />
         )}
       </div>
@@ -115,13 +111,11 @@ function ResendLinkForm({
   action,
   pending,
   open,
-  onPhone,
 }: {
   state: typeof initialResendGuestOrderLinkState;
   action: (payload: FormData) => void;
   pending: boolean;
   open: boolean;
-  onPhone: (phone: string) => void;
 }) {
   return (
     <details className="order-status-resend" open={open || undefined}>
@@ -130,7 +124,7 @@ function ResendLinkForm({
         Podaj numer zamówienia, e-mail i telefon użyte przy zakupie. W środowisku
         produkcyjnym ten link powinien zostać wysłany e-mailem.
       </p>
-      <form action={action} className="order-status-resend-form" onSubmit={(event) => onPhone(String(new FormData(event.currentTarget).get("phone") ?? ""))}>
+      <form action={action} className="order-status-resend-form">
         <div className="ui-field">
           <label htmlFor="resend-order-number">Numer zamówienia</label>
           <input id="resend-order-number" name="orderNumber" className="ui-input" placeholder="MON-000001" required />

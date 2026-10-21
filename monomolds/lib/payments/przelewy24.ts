@@ -83,7 +83,7 @@ export function createP24Client(config: P24Config, fetcher: typeof fetch = fetch
       const data = result.data as ProviderTransaction | undefined;
       if (!data || data.sessionId !== sessionId || !Number.isSafeInteger(data.orderId) || !Number.isSafeInteger(data.amount)
         || data.currency !== 'PLN' || ![0,1,2,3].includes(data.status)) throw new PaymentProviderError('PROVIDER_RESPONSE_INVALID', true);
-      return data;
+      return { sessionId: data.sessionId, orderId: data.orderId, amount: data.amount, currency: data.currency, status: data.status };
     },
     async verify(n: Pick<PaymentNotification, 'sessionId'|'orderId'|'amount'|'currency'>) {
       const result = await request('transaction/verify', 'PUT', { merchantId: config.merchantId, posId: config.posId,

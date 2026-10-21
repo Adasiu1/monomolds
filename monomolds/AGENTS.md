@@ -199,7 +199,10 @@ shipped         -> completed
 ```
 
 Only a verified provider webhook (including replay of its durable notification)
-may transition an order to `paid`. A verified late payment may settle an expired
+or controlled server-only recovery using authenticated P24 lookup plus
+`transaction/verify` may transition an order to `paid`. Recovery must match the
+stored session, amount, and currency and persist a distinct `payment_recovery`
+audit event before verification. Never fabricate a signed webhook. A verified late payment may settle an expired
 attempt/order. Payments after order cancellation and second genuine payments are
 recorded as `review_required` without reopening the order. A browser
 redirect is never proof of payment. Webhook processing must be signed, idempotent,

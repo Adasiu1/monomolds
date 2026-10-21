@@ -1,6 +1,11 @@
 import path from "node:path";
 import type { NextConfig } from 'next';
 
+const sandboxUrl = process.env.P24_ENV === 'sandbox' ? process.env.APP_BASE_URL : undefined;
+const sandboxHostname = sandboxUrl && URL.canParse(sandboxUrl) && new URL(sandboxUrl).protocol === 'https:'
+  ? new URL(sandboxUrl).hostname
+  : null;
+
 const nextConfig: NextConfig = {
   output: 'standalone',
 
@@ -28,7 +33,7 @@ const nextConfig: NextConfig = {
 
   // Allow phones on our Wi-Fi to connect to Next.js development tools.
   // Update this address if the Mac's local IP changes.
-  allowedDevOrigins: ['127.0.0.1', 'localhost', '192.168.1.47'],
+  allowedDevOrigins: ['127.0.0.1', 'localhost', '192.168.1.47', ...(sandboxHostname ? [sandboxHostname] : [])],
 
   images: {
     remotePatterns: [

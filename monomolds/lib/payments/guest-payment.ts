@@ -21,14 +21,22 @@ export async function beginGuestPayment(token: string, phone: string, fingerprin
 
 export async function reconcilePaymentEvents(orderId?: string) {
   const db = paymentDatabase();
-  let query = db.from('payment_events').select('id,payload').eq('provider','przelewy24').eq('status','received').order('created_at').limit(orderId ? 1 : 20);
+  let query = db.from('payment_events').select('id,event_type,payload').eq('provider','przelewy24').eq('status','received').order('created_at').limit(orderId ? 1 : 20);
   if (orderId) query = query.eq('order_id', orderId);
   const { data, error } = await query;
   if (error) throw new Error('PAYMENT_DATABASE_UNAVAILABLE');
   const service = createPaymentService(createPaymentStore(), paymentConfig());
   let completed = 0;
   for (const event of data ?? []) {
-    try { await service.notify(event.payload); completed++; }
+    try {
+      if (event.event_type === 'payment_recovery') {
+        const payload = event.payload as { sessionId?: unknown };
+        if (typeof payload?.sessionId !== 'string') throw new Error('INVALID_RECOVERY_EVENT');
+        const result = await service.recover(payload.sessionId);
+        if (result.status === 'unpaid') throw new Error('PAYMENT_NOT_CONFIRMED');
+      } else await service.notify(event.payload);
+      completed++;
+    }
     catch { console.error('Payment reconciliation deferred.', { eventId: event.id }); }
   }
   return { checked: data?.length ?? 0, completed };

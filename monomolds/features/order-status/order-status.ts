@@ -22,9 +22,10 @@ export const orderStatusDescriptions: Record<OrderStatus, string> = {
 
 export type OrderStatusFormState =
   | { status: "idle" | "error"; message: string | null; order: null }
-  | { status: "success"; message: null; order: PublicOrderStatus };
+  | { status: "success"; message: null; order: PublicOrderStatus; phone: string };
 
 export type ResendGuestOrderLinkState = {
+  phone?: string;
   status: "idle" | "error" | "success";
   message: string | null;
   link: string | null;

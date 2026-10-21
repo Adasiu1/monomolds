@@ -20,6 +20,12 @@ function fixture() {
     async endAttempt(id, status) { a.status = status; },
     async findAttempt() { return a; },
     async recordNotification(a, n) { let event = events.find(e => e.id === n.orderId); if (!event) { event = { id: n.orderId, attempt_id: a.id, status: 'received', payload: n }; events.push(event); } return event; },
+    async recordRecovery(a, t) {
+      const existing = events.find(e => e.id === t.orderId);
+      if (existing) return existing;
+      const event = { id: t.orderId, attempt_id: a.id, status: 'received', payload: { ...t, source: 'authenticated_provider_api' } };
+      events.push(event); return event;
+    },
     async complete(id, orderId) { a.status = 'paid'; a.provider_order_id = orderId; events.find(e => e.id === orderId).status = 'verified'; completed.push(orderId); },
   };
   return { a, store, events, completed, reuse: () => { fresh = false; } };
@@ -135,4 +141,44 @@ test('the API access check never registers a payment', async () => {
   let called;
   await createP24Client(config, async url => { called = url; return response(true); }).testAccess();
   assert.equal(called, 'https://sandbox.przelewy24.pl/api/v1/testAccess');
+});
+
+test('recovers a paid advance without a webhook and retains a distinct audit source', async () => {
+  const f = fixture(); let verifies = 0;
+  const service = createPaymentService(f.store, config, async url => {
+    if (url.endsWith('verify')) { verifies++; assert.equal(f.events[0].payload.source, 'authenticated_provider_api'); return response({ status: 'success' }); }
+    return response({ sessionId, orderId: 99, amount: 7799, currency: 'PLN', status: 1, clientEmail: 'private@example.test' });
+  });
+  assert.equal((await service.recover(sessionId)).status, 'processed');
+  assert.equal(f.a.status, 'paid');
+  assert.equal(f.events[0].payload.sign, undefined);
+  assert.equal(f.events[0].payload.clientEmail, undefined);
+  assert.equal((await service.recover(sessionId)).status, 'already_processed');
+  assert.equal(verifies, 1);
+});
+test('recovery never verifies unpaid, refunded, or mismatched provider transactions', async () => {
+  for (const change of [{ status: 0 }, { status: 3 }, { amount: 7800 }, { currency: 'EUR' }, { sessionId: '00000000-0000-4000-8000-000000000002' }, { orderId: 0 }]) {
+    const f = fixture(); let verifies = 0;
+    const service = createPaymentService(f.store, config, async url => {
+      if (url.endsWith('verify')) { verifies++; return response({ status: 'success' }); }
+      return response({ sessionId, orderId: 99, amount: 7799, currency: 'PLN', status: 1, ...change });
+    });
+    if (change.status === 0) assert.equal((await service.recover(sessionId)).status, 'unpaid');
+    else await assert.rejects(service.recover(sessionId));
+    assert.equal(verifies, 0); assert.equal(f.events.length, 0); assert.notEqual(f.a.status, 'paid');
+  }
+});
+test('recovery persists before verification and can resume after verification or database failure', async () => {
+  const f = fixture(); const complete = f.store.complete;
+  f.store.complete = async () => { throw new Error('database unavailable'); };
+  const paid = { sessionId, orderId: 99, amount: 7799, currency: 'PLN', status: 1 };
+  await assert.rejects(createPaymentService(f.store, config, async url => response(url.endsWith('verify') ? { status: 'success' } : paid)).recover(sessionId));
+  assert.equal(f.events[0].status, 'received'); assert.equal(f.completed.length, 0);
+  f.store.complete = complete;
+  await createPaymentService(f.store, config, async url => url.endsWith('verify') ? response({},400) : response({ ...paid, status: 2 })).recover(sessionId);
+  assert.equal(f.events[0].status, 'verified'); assert.equal(f.completed.length, 1);
+});
+test('provider lookup returns only reconciliation fields, never customer data', async () => {
+  const data = await createP24Client(config, async () => response({ sessionId, orderId: 99, amount: 7799, currency: 'PLN', status: 1, clientEmail: 'private@example.test', clientAddress: 'private address' })).lookup(sessionId);
+  assert.deepEqual(Object.keys(data).sort(), ['amount','currency','orderId','sessionId','status']);
 });

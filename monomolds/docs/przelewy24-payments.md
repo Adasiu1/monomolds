@@ -12,9 +12,9 @@ project is required. The primary checkout is on `orfin/MON-28-przelewy24-sandbox
 1. Start Docker Desktop and the existing local Supabase stack. Do not reset the
    database: the payment migration is additive and has already been applied locally.
 2. In the app directory, install dependencies and use Node >=20.9 (Node 22 recommended).
-   Run `npm run dev -- --port 3101`.
+   Run `npm run dev` (port 3000).
 3. Install Cloudflare's official client with `brew install cloudflared`, then run
-   `cloudflared tunnel --url http://localhost:3101` in another terminal.
+   `cloudflared tunnel --url http://localhost:3000` in another terminal.
 4. Put the generated `https://...trycloudflare.com` origin into `APP_BASE_URL` in
    the ignored `.env.local`. Fill the P24 fields from the sandbox panel:
    account ID -> `P24_MERCHANT_ID` and `P24_POS_ID` (unless a separate POS is assigned),
@@ -106,7 +106,7 @@ If verification succeeded but the database commit failed, the saved event remain
 replayable. An authenticated lookup confirming the same transaction as paid can
 recover an already verified payment during replay. The recovery endpoint and an
 authorized customer status read both replay received notifications. A browser
-return or a standalone transaction lookup never sets an order paid.
+return or an unverified transaction lookup never sets an order paid.
 
 Verified late payments can settle expired attempts/orders. Cancelled orders and a
 second genuine payment are retained as `review_required`; they require manual
@@ -155,5 +155,60 @@ acceptance. Do not mark Jira stories complete until their actual criteria pass.
   a wrong phone is rejected; the correct phone reveals status and retry/refresh.
   Checked 390 px mobile and 1440 px desktop layouts and keyboard focus.
 - HTTPS tunnel responds after moving the branch into the primary checkout.
-- Real sandbox registration/payment/notification acceptance is pending local API
-  credentials and the end-to-end test. This is not evidence of completed MON-24.
+- Real sandbox API access, registration, hosted payment, signed notification,
+  verification, secure browser return, and paid customer status passed for
+  MON-000038, 7799 grosze, P24 transaction 4303489860.
+- Replaying that signed notification twice returned HTTP 200 and retained one
+  event. Modifying its signed amount returned HTTP 400.
+- MON-000039 remained unpaid after a P24 internal error and the bank simulator's
+  payment-error scenario. Continuing reused the existing session without creating
+  another attempt. A failed provider session can return immediately to the shop;
+  a new attempt is permitted only after expiry/grace and an authoritative unpaid
+  lookup. Do not promise immediate creation of another payment.
+- Browser testing found that early form submission can precede client hydration.
+  Status actions now return the verified phone, so polling/retry do not depend on
+  a client onSubmit handler. The recovery link uses APP_BASE_URL when configured.
+- The configured sandbox HTTPS hostname is included in allowedDevOrigins so local
+  checkout works through a tunnel without allowing all external origins.
+- The full real-provider cancellation/timeout/late-payment and outage matrix is
+  still pending; MON-24 remains open. This log does not establish production readiness.
+
+## Lost notifications and controlled API recovery
+
+A stopped local server, wrong tunnel port, or expired Quick Tunnel URL can prevent
+P24 notifications from reaching the database at all. `payments:reconcile` can replay
+saved events but cannot find a notification that was never received.
+
+For a known stored session, use the authenticated maintenance boundary:
+
+```bash
+npm run payments:recover -- <session-uuid>
+```
+
+The local app must be running on port 3000. A different local port can be supplied
+as a second argument, for example `http://127.0.0.1:3101`. The CLI reads its bearer
+secret from the ignored environment file; it never prints keys or customer data.
+It sends the session to the existing protected reconciliation endpoint. Without a
+request body, that endpoint retains its normal scheduled replay behavior.
+
+Recovery uses an authenticated P24 lookup, requires the stored session, exact
+amount and PLN currency to match, and accepts only advance-payment/paid states.
+It stores a distinct `payment_recovery` event before `transaction/verify`. Its
+payload contains only payment identifiers, amount, currency, provider state, and
+`source=authenticated_provider_api`. It never fabricates a webhook signature.
+The same atomic completion RPC handles duplicate and late payments and cancelled
+orders. Saved recovery events can be retried by normal reconciliation after an
+outage. This is an explicit extension of the earlier webhook-only settlement rule.
+
+On 21 October 2026, MON-000040 had no received notification, while P24 reported an
+advance payment of 36900 grosze. The app was on port 3000, the old tunnel pointed
+to 3101, and its public hostname no longer resolved. API recovery verified P24
+transaction 4303489896 and settled the order with a durable recovery audit event.
+
+Restart a temporary tunnel when its hostname expires, update `APP_BASE_URL`, and
+restart Next.js. Existing P24 sessions retain the previous callback URLs; recover
+those sessions explicitly rather than asking the customer to pay again.
+
+Recovery verification: 60 application tests, lint, TypeScript/build, and protected
+endpoint checks (401 without credentials, 400 for an invalid session) passed.
+Repeating MON-000040 recovery returned `already_processed`.

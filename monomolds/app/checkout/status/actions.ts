@@ -51,7 +51,7 @@ export async function readGuestOrderStatusAction(
     typeof phone === "string" ? phone.trim() : "",
   );
   return result.ok
-    ? { status: "success", message: null, order: result.order }
+    ? { status: "success", message: null, order: result.order, phone: normalizeGuestPhone(typeof phone === "string" ? phone : "") }
     : { status: "error", message: result.message, order: null };
 }
 
@@ -88,10 +88,11 @@ export async function resendGuestOrderStatusLinkAction(
   const order = await getGuestOrderStatus(result.token, normalizeGuestPhone(phoneValue), fingerprint);
   if (!order) return { status: "error", message: safeErrorMessage, link: null, order: null };
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   return {
     status: "success",
     message: "Wygenerowano nowy link do statusu zamówienia.",
+    phone: normalizeGuestPhone(phoneValue),
     link: `${origin.replace(/\/$/, "")}/zamowienie/status?token=${encodeURIComponent(result.token)}`,
     order,
   };
