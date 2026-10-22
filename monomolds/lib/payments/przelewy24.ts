@@ -57,7 +57,8 @@ export function createP24Client(config: P24Config, fetcher: typeof fetch = fetch
         ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(10000) });
     } catch { throw new PaymentProviderError('PROVIDER_UNAVAILABLE', true); }
     if (response.status === 404 && method === 'GET') return null;
-    if (!response.ok) throw new PaymentProviderError('PROVIDER_REJECTED', response.status >= 500 || response.status === 408 || response.status === 429);
+    if (response.status === 429) throw new PaymentProviderError('PROVIDER_RATE_LIMITED');
+    if (!response.ok) throw new PaymentProviderError('PROVIDER_REJECTED', response.status >= 500 || response.status === 408);
     try { return await response.json() as { data?: unknown }; }
     catch { throw new PaymentProviderError('PROVIDER_RESPONSE_INVALID', true); }
   }

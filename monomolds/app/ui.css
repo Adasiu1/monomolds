@@ -35,6 +35,22 @@ textarea.ui-input { resize: vertical; min-height: 8rem; }
 .ui-checkbox { display: flex; gap: .75rem; align-items: center; min-height: 44px; cursor: pointer; line-height: 1.6; }
 .ui-checkbox input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--accent); }
 .ui-checkbox:has(input:disabled) { color: var(--muted); cursor: not-allowed; }
+.checkout-terms-link { text-decoration: underline; text-underline-offset: .2em; }
+.phone-number-field { gap: .5rem; }
+.phone-number-control { display: flex; min-width: 0; }
+.phone-number-control .ui-input { min-width: 0; }
+.phone-country {
+  flex: 0 0 5.5rem; width: 5.5rem; padding: .65rem .35rem .65rem .6rem;
+  border-color: #676b63; border-radius: .65rem 0 0 .65rem;
+  background-color: var(--surface-raised); cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.phone-country:hover:not(:disabled) { background-color: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.phone-country:focus-visible { position: relative; z-index: 1; border-color: var(--accent); }
+.phone-national-number { flex: 1 1 0; border-left: 0; border-radius: 0 .65rem .65rem 0; }
+.phone-number-control:focus-within .ui-input { border-color: var(--accent); }
+.phone-number-control:focus-within .phone-national-number { border-left: 0; }
+@media (prefers-reduced-motion: reduce) { .phone-country { transition: none; } }
 .ui-price { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; font-size: 1.1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .ui-price > span:first-child, .ui-price del { white-space: nowrap; }
 .ui-price del { color: var(--muted); font-size: .875rem; font-weight: 400; }

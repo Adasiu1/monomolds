@@ -59,6 +59,31 @@ test('validates signed notification fields, integer money, and merchant identity
   assert.equal(validNotificationSign(n, { ...config, merchantId: 124 }), false);
   for (const change of [{ amount: 1.5 }, { orderId: Number.MAX_SAFE_INTEGER + 1 }, { currency: 'EUR' }, { sign: 'short' }]) assert.throws(() => parseNotification({ ...n, ...change }));
 });
+test('reports provider rate limiting with a distinct safe error', async () => {
+  const client = createP24Client(config, async () => new Response(null, { status: 429 }));
+  await assert.rejects(client.testAccess(), error => error.code === 'PROVIDER_RATE_LIMITED');
+});
+test('shows a retry-later message when P24 rejects registration due to rate limiting', async () => {
+  const f = fixture();
+  const service = createPaymentService(f.store, config, async () => new Response(null, { status: 429 }));
+  const result = await service.start('token', 'phone', 'fingerprint');
+  assert.equal(result.code, 'PAYMENT_RATE_LIMITED');
+  assert.match(result.message, /operator płatności ograniczył liczbę prób/i);
+  assert.equal(f.a.status, 'failed');
+});
+test('explains payment rate limits and pending attempts instead of hiding the cause', async () => {
+  for (const [failure, expectedCode, expectedMessage] of [
+    ['RATE_LIMITED', 'PAYMENT_RATE_LIMITED', 'zbyt wiele prób'],
+    ['PAYMENT_PENDING', 'PAYMENT_PENDING', 'jeszcze sprawdzana'],
+  ]) {
+    const f = fixture();
+    f.store.prepare = async () => { throw new Error(failure); };
+    const service = createPaymentService(f.store, config);
+    const result = await service.start('token', 'phone', 'fingerprint');
+    assert.equal(result.code, expectedCode);
+    assert.match(result.message, new RegExp(expectedMessage, 'i'));
+  }
+});
 test('reuses the same active attempt after repeated or concurrent starts', async () => {
   const f = fixture(); let registered = 0;
   const service = createPaymentService(f.store, config, async url => { if (url.endsWith('register')) { registered++; return response({ token: 'payment-token' }); } return response(undefined, 404); }, () => 1);
@@ -69,6 +94,35 @@ test('reuses the same active attempt after repeated or concurrent starts', async
   assert.equal(reused.ok, true);
   assert.equal(reused.redirectUrl, results[0].redirectUrl);
   assert.equal(registered, 1);
+});
+test('does not reopen the same P24 payment when the customer returns without a confirmed payment', async () => {
+  const f = fixture();
+  let registered = 0;
+  const service = createPaymentService(f.store, config, async url => {
+    if (url.endsWith('register')) {
+      registered++;
+      return response({ token: 'payment-token' });
+    }
+    return response({ sessionId, orderId: 1, amount: 7799, currency: 'PLN', status: 0 });
+  }, () => 1);
+  const first = await service.start('token', 'phone', 'fingerprint');
+  assert.equal(first.ok, true);
+
+  const returned = await service.start('token', 'phone', 'fingerprint', { returnedFromProvider: true });
+  assert.equal(returned.code, 'PAYMENT_PENDING');
+  assert.match(returned.message, /status nie potwierdza jeszcze błędu/i);
+  assert.equal(registered, 1);
+});
+test('does not retry a P24 transaction that the provider reports as returned', async () => {
+  const f = fixture();
+  const service = createPaymentService(f.store, config, async url => {
+    if (url.endsWith('register')) return response({ token: 'payment-token' });
+    return response({ sessionId, orderId: 1, amount: 7799, currency: 'PLN', status: 3 });
+  }, () => 1);
+  await service.start('token', 'phone', 'fingerprint');
+  const returned = await service.start('token', 'phone', 'fingerprint', { returnedFromProvider: true });
+  assert.equal(returned.code, 'PAYMENT_PENDING');
+  assert.match(returned.message, /operator zwrócił płatność/i);
 });
 test('an ambiguous registration timeout keeps the attempt and reconciles before retry', async () => {
   const f = fixture(); const paths = [];

@@ -24,7 +24,12 @@ export function createPaymentStore(): PaymentStore {
   return {
     async prepare(hash, phone, fingerprint) {
       const { data, error } = await db.rpc('prepare_guest_payment', { p_guest_token_hash: hash, p_phone: phone, p_request_fingerprint: fingerprint });
-      if (error || !data) throw new Error('PAYMENT_NOT_ALLOWED');
+      if (error) {
+        if (error.message.includes('RATE_LIMITED')) throw new Error('RATE_LIMITED');
+        if (error.message.includes('PAYMENT_PENDING')) throw new Error('PAYMENT_PENDING');
+        throw new Error('PAYMENT_NOT_ALLOWED');
+      }
+      if (!data) throw new Error('PAYMENT_NOT_ALLOWED');
       return data as unknown as { attempt: PaymentAttempt; fresh: boolean; email: string; orderNumber: string };
     },
     async saveToken(id, token) {

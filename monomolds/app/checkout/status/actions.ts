@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { beginGuestPayment, reconcilePaymentEvents } from "@/lib/payments/guest-payment";
 import { paymentDatabase } from "@/lib/payments/repository";
 import { hashGuestToken } from "@/lib/payments/service";
@@ -13,12 +14,36 @@ import {
 import { requestFingerprint } from "@/lib/commerce/request-fingerprint";
 import { getGuestOrderStatus } from "@/lib/commerce/supabase-repository";
 import { resendGuestOrderStatusLink } from "@/lib/commerce/supabase-repository";
+import { normalizeCheckoutPhone } from "@/features/checkout/phone";
 
 export type GuestOrderStatusResult =
   | { ok: true; order: PublicOrderStatus }
   | { ok: false; message: string };
 
 const safeErrorMessage = "Nie udało się potwierdzić danych zamówienia.";
+const paymentReturnCookie = "p24_order_return";
+
+async function getPaymentReturnIdentity(attemptId: string, token: string): Promise<{ phone: string } | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(attemptId) || !isGuestOrderToken(token)) return null;
+
+  const cookieValue = (await cookies()).get(paymentReturnCookie)?.value;
+  if (cookieValue !== `${attemptId}.${token}`) return null;
+
+  try {
+    const db = paymentDatabase();
+    const attempt = await db.from("payment_attempts").select("order_id").eq("id", attemptId).maybeSingle();
+    if (attempt.error || !attempt.data) return null;
+
+    const order = await db.from("orders").select("phone").eq("id", attempt.data.order_id)
+      .eq("guest_token_hash", hashGuestToken(token)).maybeSingle();
+    const phone = order.data?.phone;
+    if (order.error || !phone || !isGuestPhone(phone)) return null;
+    return { phone };
+  } catch {
+    console.error("Payment return order lookup failed.");
+    return null;
+  }
+}
 
 export async function readGuestOrderStatus(token: string, phone: string): Promise<GuestOrderStatusResult> {
   if (!isGuestOrderToken(token) || !isGuestPhone(phone)) {
@@ -40,18 +65,43 @@ export async function readGuestOrderStatus(token: string, phone: string): Promis
     : { ok: false, message: safeErrorMessage };
 }
 
+export async function readGuestOrderStatusFromPaymentReturn(
+  attemptId: string,
+  token: string,
+): Promise<GuestOrderStatusResult> {
+  const identity = await getPaymentReturnIdentity(attemptId, token);
+  if (!identity) return { ok: false, message: safeErrorMessage };
+  return readGuestOrderStatus(token, identity.phone);
+}
+
+export async function startGuestPaymentFromPaymentReturn(
+  attemptId: string,
+  token: string,
+): Promise<Extract<import("@/lib/payments/service").StartPaymentResult, { ok: false }>> {
+  const identity = await getPaymentReturnIdentity(attemptId, token);
+  if (!identity) return { ok: false, code: "PAYMENT_NOT_ALLOWED", message: safeErrorMessage };
+  const result = await beginGuestPayment(token, identity.phone, await requestFingerprint(), { returnedFromProvider: true });
+  if (result.ok) redirect(result.redirectUrl);
+  return result;
+}
+
 export async function readGuestOrderStatusAction(
   _previousState: import("@/features/order-status/order-status").OrderStatusFormState,
   formData: FormData,
 ): Promise<import("@/features/order-status/order-status").OrderStatusFormState> {
   const token = formData.get("token");
-  const phone = formData.get("phone");
+  const phoneCountryCode = formData.get("phoneCountryCode");
+  const phoneNational = formData.get("phoneNational");
+  const phone = normalizeCheckoutPhone(
+    typeof phoneCountryCode === "string" ? phoneCountryCode : "",
+    typeof phoneNational === "string" ? phoneNational.trim() : "",
+  );
   const result = await readGuestOrderStatus(
     typeof token === "string" ? token.trim().toLowerCase() : "",
-    typeof phone === "string" ? phone.trim() : "",
+    phone ?? "",
   );
   return result.ok
-    ? { status: "success", message: null, order: result.order, phone: normalizeGuestPhone(typeof phone === "string" ? phone : "") }
+    ? { status: "success", message: null, order: result.order, phone: normalizeGuestPhone(phone ?? "") }
     : { status: "error", message: result.message, order: null };
 }
 
@@ -61,10 +111,14 @@ export async function resendGuestOrderStatusLinkAction(
 ): Promise<import("@/features/order-status/order-status").ResendGuestOrderLinkState> {
   const orderNumber = formData.get("orderNumber");
   const email = formData.get("email");
-  const phone = formData.get("phone");
+  const phoneCountryCode = formData.get("phoneCountryCode");
+  const phoneNational = formData.get("phoneNational");
   const parsedOrderNumber = typeof orderNumber === "string" ? Number(orderNumber.replace(/^MON-/i, "")) : NaN;
   const emailValue = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const phoneValue = typeof phone === "string" ? phone.trim() : "";
+  const phoneValue = normalizeCheckoutPhone(
+    typeof phoneCountryCode === "string" ? phoneCountryCode : "",
+    typeof phoneNational === "string" ? phoneNational.trim() : "",
+  ) ?? "";
 
   if (!Number.isInteger(parsedOrderNumber) || parsedOrderNumber < 1 || !/^\S+@\S+\.\S+$/.test(emailValue) || !isGuestPhone(phoneValue)) {
     console.error("Guest order status link validation failed.", {

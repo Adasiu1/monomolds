@@ -5,7 +5,9 @@ import type { PublicOrderStatus } from "@/lib/commerce/contracts";
 import {
   readGuestOrderStatusAction,
   readGuestOrderStatus,
+  readGuestOrderStatusFromPaymentReturn,
   startGuestPaymentAction,
+  startGuestPaymentFromPaymentReturn,
   resendGuestOrderStatusLinkAction,
 } from "@/app/checkout/status/actions";
 import {
@@ -18,10 +20,11 @@ import {
   orderStatusDescriptions,
   orderStatusLabels,
 } from "./order-status";
+import { PhoneNumberField } from "@/features/checkout/phone-number-field";
 
-type OrderStatusPageProps = { initialToken?: string };
+type OrderStatusPageProps = { initialToken?: string; paymentReturnAttempt?: string };
 
-export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
+export function OrderStatusPage({ initialToken = "", paymentReturnAttempt = "" }: OrderStatusPageProps) {
   const [state, formAction, pending] = useActionState(
     readGuestOrderStatusAction,
     initialOrderStatusFormState,
@@ -30,6 +33,18 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
     resendGuestOrderStatusLinkAction,
     initialResendGuestOrderLinkState,
   );
+  const [paymentReturnState, setPaymentReturnState] = useState<Awaited<ReturnType<typeof readGuestOrderStatusFromPaymentReturn>> | null>(null);
+
+  useEffect(() => {
+    if (!paymentReturnAttempt || !isGuestOrderToken(initialToken)) return;
+    let active = true;
+    readGuestOrderStatusFromPaymentReturn(paymentReturnAttempt, initialToken)
+      .then((result) => { if (active) setPaymentReturnState(result); })
+      .catch(() => {
+        if (active) setPaymentReturnState({ ok: false, message: "Nie udało się potwierdzić danych zamówienia." });
+      });
+    return () => { active = false; };
+  }, [initialToken, paymentReturnAttempt]);
 
   return (
     <div className="site-container order-status-page">
@@ -38,29 +53,28 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
           <p className="checkout-confirmation-eyebrow">Moje zamówienie</p>
           <h1>Sprawdź status zamówienia</h1>
           <p>
-          Potwierdź swoje dane użyte podczas składania zamówienia, aby zobaczyć jego aktualny status.
+          {paymentReturnAttempt
+            ? "Potwierdzenie zamówienia i status płatności."
+            : "Potwierdź swoje dane użyte podczas składania zamówienia, aby zobaczyć jego aktualny status."}
           </p>
         </header>
 
-        {isGuestOrderToken(initialToken) ? (
+        {paymentReturnAttempt && isGuestOrderToken(initialToken) && paymentReturnState === null ? (
+          <p className="ui-notice" role="status">Pobieramy potwierdzenie i aktualny status zamówienia…</p>
+        ) : null}
+
+        {isGuestOrderToken(initialToken) && (!paymentReturnAttempt || paymentReturnState?.ok === false) ? (
           <form action={formAction} className="order-status-form" noValidate>
             <input type="hidden" name="token" value={initialToken} />
-            <div className="ui-field">
-              <label htmlFor="guest-order-phone">Numer telefonu</label>
-              <input
-                id="guest-order-phone"
-                name="phone"
-                className="ui-input"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="+48 123 123 123"
-                required
-              />
-              <p className="ui-field-note">
-                Podaj numer użyty podczas składania zamówienia.
-              </p>
-            </div>
+            {paymentReturnState?.ok === false && (
+              <p className="ui-notice ui-notice--error" role="alert">{paymentReturnState.message} Wpisz numer telefonu, aby sprawdzić status.</p>
+            )}
+            <PhoneNumberField
+              id="guest-order-phone"
+              label="Numer telefonu"
+              nationalNumberName="phoneNational"
+              hint="Podaj numer użyty podczas składania zamówienia."
+            />
             {state.status === "error" && (
               <p className="ui-notice ui-notice--error" role="alert">
                 <span className="ui-notice-icon" aria-hidden="true">!</span>
@@ -72,13 +86,23 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
             </button>
           </form>
         ) : initialToken ? (
-          <p className="ui-notice ui-notice--error" role="alert">
-            <span className="ui-notice-icon" aria-hidden="true">!</span>
-            <span>Ten link do zamówienia jest nieprawidłowy lub wygasł.</span>
-          </p>
+          paymentReturnState?.ok === false
+            ? <p className="ui-notice ui-notice--error" role="alert">{paymentReturnState.message}</p>
+            : !isGuestOrderToken(initialToken)
+              ? <p className="ui-notice ui-notice--error" role="alert">Ten link do zamówienia jest nieprawidłowy lub wygasł.</p>
+              : null
         ) : null}
 
         {state.status === "success" && <VerifiedOrder key={`${initialToken}:${state.phone}`} initialOrder={state.order} token={initialToken} phone={state.phone} />}
+        {paymentReturnState?.ok && (
+          <VerifiedOrder
+            key={`${paymentReturnAttempt}:${paymentReturnState.order.orderNumber}`}
+            initialOrder={paymentReturnState.order}
+            token={initialToken}
+            phone=""
+            paymentReturnAttempt={paymentReturnAttempt}
+          />
+        )}
         {resendState.status === "success" && resendState.order && (
           <>
             <p className="ui-notice ui-notice--success" role="status">
@@ -93,7 +117,7 @@ export function OrderStatusPage({ initialToken = "" }: OrderStatusPageProps) {
             <VerifiedOrder key={resendState.link} initialOrder={resendState.order} token={resendState.link ? new URL(resendState.link).searchParams.get("token") ?? "" : ""} phone={resendState.phone ?? ""} />
           </>
         )}
-        {state.status !== "success" && resendState.status !== "success" && (
+        {!paymentReturnAttempt && state.status !== "success" && resendState.status !== "success" && (
           <ResendLinkForm
             state={resendState}
             action={resendAction}
@@ -133,10 +157,11 @@ function ResendLinkForm({
           <label htmlFor="resend-email">E-mail</label>
           <input id="resend-email" name="email" className="ui-input" type="email" autoComplete="email" required />
         </div>
-        <div className="ui-field">
-          <label htmlFor="resend-phone">Numer telefonu</label>
-          <input id="resend-phone" name="phone" className="ui-input" type="tel" inputMode="tel" autoComplete="tel" required />
-        </div>
+        <PhoneNumberField
+          id="resend-phone"
+          label="Numer telefonu"
+          nationalNumberName="phoneNational"
+        />
         {state.status !== "idle" && (
           <div className={state.status === "error" ? "ui-notice ui-notice--error" : "ui-notice ui-notice--success"} role={state.status === "error" ? "alert" : "status"}>
             <span>{state.message}</span>
@@ -155,7 +180,7 @@ function ResendLinkForm({
   );
 }
 
-function VerifiedOrder({ initialOrder, token, phone }: { initialOrder: PublicOrderStatus; token: string; phone: string }) {
+function VerifiedOrder({ initialOrder, token, phone, paymentReturnAttempt }: { initialOrder: PublicOrderStatus; token: string; phone: string; paymentReturnAttempt?: string }) {
   const [order, setOrder] = useState(initialOrder);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -169,7 +194,11 @@ function VerifiedOrder({ initialOrder, token, phone }: { initialOrder: PublicOrd
     const deadlineTimer = setTimeout(() => { stopped = true; setPolling(false); }, 60000);
     const poll = async () => {
       let result;
-      try { result = await readGuestOrderStatus(token, phone); }
+      try {
+        result = paymentReturnAttempt
+          ? await readGuestOrderStatusFromPaymentReturn(paymentReturnAttempt, token)
+          : await readGuestOrderStatus(token, phone);
+      }
       catch {
         if (!stopped) { setPolling(false); setMessage("Nie udało się odświeżyć statusu. Spróbuj ponownie."); }
         return;
@@ -186,40 +215,52 @@ function VerifiedOrder({ initialOrder, token, phone }: { initialOrder: PublicOrd
     };
     timer = setTimeout(poll, 3000);
     return () => { stopped = true; clearTimeout(timer); clearTimeout(deadlineTimer); };
-  }, [initialOrder.status, token, phone]);
+  }, [initialOrder.status, token, phone, paymentReturnAttempt]);
 
   const payment = order.payment;
   const descriptions = {
     unpaid: "Zamówienie oczekuje na płatność.",
     created: "Przygotowujemy płatność. Potwierdzenie może pojawić się za chwilę.",
-    pending: "Oczekujemy na potwierdzenie płatności. Sam powrót ze strony płatności nie potwierdza wpłaty.",
+    pending: "Oczekujemy na potwierdzenie płatności.",
     paid: "Płatność została potwierdzona.",
     failed: "Nie udało się rozpocząć płatności. Możesz spróbować ponownie.",
     cancelled: "Ta próba płatności została anulowana.",
     expired: "Ta próba płatności wygasła. Możesz spróbować ponownie.",
   };
+  const paymentConfirmed = order.status === "paid"
+    || order.status === "processing"
+    || order.status === "shipped"
+    || order.status === "completed"
+    || payment?.status === "paid";
+
   return <>
     <OrderSummary order={order} />
-    <section className="order-status-result" aria-label="Płatność">
-      <h2>Płatność</h2>
-      <p role="status">{payment?.reviewRequired
-        ? "Wpłata wymaga wyjaśnienia. Skontaktuj się z nami i podaj numer zamówienia. Nie ponawiaj płatności."
-        : payment ? descriptions[payment.status] : orderStatusDescriptions[order.status]}</p>
-      {polling && <p className="ui-field-note">Sprawdzamy status automatycznie przez minutę.</p>}
-      {message && <p role="status">{message}</p>}
-      <div className="order-payment-actions">
-        {payment?.canRetry && <button className="ui-button ui-button--primary" disabled={pending} onClick={() => startTransition(async () => {
-          setMessage(null);
-          const result = await startGuestPaymentAction(token, phone);
-          setMessage(result.message);
-        })}>{pending ? "Sprawdzanie..." : payment.status === "unpaid" ? "Przejdź do płatności" : "Kontynuuj lub ponów płatność"}</button>}
-        <button className="ui-button ui-button--secondary" disabled={pending} onClick={() => startTransition(async () => {
-          const result = await readGuestOrderStatus(token, phone);
-          if (result.ok) { setOrder(result.order); setMessage(null); }
-          else setMessage(result.message);
-        })}>Odśwież status</button>
-      </div>
-    </section>
+    {!paymentConfirmed && (
+      <section className="order-status-result" aria-label="Płatność">
+        <h2>Płatność</h2>
+        <p role="status">{payment?.reviewRequired
+          ? "Wpłata wymaga wyjaśnienia. Skontaktuj się z nami i podaj numer zamówienia. Nie ponawiaj płatności."
+          : payment ? descriptions[payment.status] : orderStatusDescriptions[order.status]}</p>
+        {polling && <p className="ui-field-note">Sprawdzamy status automatycznie przez minutę.</p>}
+        {message && <p role="status">{message}</p>}
+        <div className="order-payment-actions">
+          {payment?.canRetry && <button className="ui-button ui-button--primary" disabled={pending} onClick={() => startTransition(async () => {
+            setMessage(null);
+            const result = paymentReturnAttempt
+              ? await startGuestPaymentFromPaymentReturn(paymentReturnAttempt, token)
+              : await startGuestPaymentAction(token, phone);
+            setMessage(result.message);
+          })}>{pending ? "Sprawdzanie..." : payment.status === "unpaid" ? "Przejdź do płatności" : "Kontynuuj lub ponów płatność"}</button>}
+          <button className="ui-button ui-button--secondary" disabled={pending} onClick={() => startTransition(async () => {
+            const result = paymentReturnAttempt
+              ? await readGuestOrderStatusFromPaymentReturn(paymentReturnAttempt, token)
+              : await readGuestOrderStatus(token, phone);
+            if (result.ok) { setOrder(result.order); setMessage(null); }
+            else setMessage(result.message);
+          })}>Odśwież status</button>
+        </div>
+      </section>
+    )}
   </>;
 }
 

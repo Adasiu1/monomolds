@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { beginGuestPayment } from "@/lib/payments/guest-payment";
 import type { CheckoutInput, ContractFieldErrors } from "@/lib/commerce/contracts";
 import { COMMERCE_CONFIG } from "@/lib/commerce/config";
@@ -8,9 +7,9 @@ import { isValidPolishNip, normalizePolishNip } from "@/lib/commerce/nip";
 import { requestFingerprint } from "@/lib/commerce/request-fingerprint";
 import { createSupabaseCommerceRepository } from "@/lib/commerce/supabase-repository";
 import type { CheckoutFormState } from "@/features/checkout/types";
+import { normalizeCheckoutPhone } from "@/features/checkout/phone";
 
 const emailPattern = /^\S+@\S+\.\S+$/;
-const phonePattern = /^\+?[0-9 ]{7,15}$/;
 const postalCodePattern = /^\d{2}-\d{3}$/;
 
 function formValue(formData: FormData, name: string): string {
@@ -30,6 +29,7 @@ function invalidInput(fieldErrors: ContractFieldErrors): CheckoutFormState {
     orderNumber: null,
     orderStatus: null,
     statusPath: null,
+    paymentRedirectUrl: null,
   };
 }
 
@@ -44,7 +44,7 @@ export async function submitGuestCheckout(
   const email = formValue(formData, "email");
   const firstName = formValue(formData, "firstName");
   const lastName = formValue(formData, "lastName");
-  const phone = formValue(formData, "phone");
+  const phone = normalizeCheckoutPhone(formValue(formData, "phoneCountryCode"), formValue(formData, "phoneNational"));
   const quoteId = formValue(formData, "quoteId");
   const deliveryMethod = formValue(formData, "deliveryMethod");
   const acceptedTerms = formData.get("acceptedTerms") === "on";
@@ -57,7 +57,7 @@ export async function submitGuestCheckout(
   if (!emailPattern.test(email)) fieldErrors["customer.email"] = ["Podaj prawidłowy adres e-mail."];
   if (!firstName) fieldErrors["customer.firstName"] = ["Podaj imię."];
   if (!lastName) fieldErrors["customer.lastName"] = ["Podaj nazwisko."];
-  if (!phonePattern.test(phone)) fieldErrors["customer.phone"] = ["Podaj prawidłowy numer telefonu."];
+  if (!phone) fieldErrors["customer.phone"] = ["Podaj prawidłowy numer telefonu dla wybranego kraju."];
   if (!acceptedTerms) fieldErrors.acceptedTerms = ["Akceptacja regulaminu jest wymagana."];
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(idempotencyKey)) fieldErrors.idempotencyKey = ["Odśwież stronę i spróbuj ponownie."];
   if (!/^[0-9a-f]{64}$/.test(guestOrderToken)) fieldErrors.guestOrderToken = ["Odśwież stronę i spróbuj ponownie."];
@@ -101,7 +101,7 @@ export async function submitGuestCheckout(
     };
   }
 
-  if (Object.keys(fieldErrors).length > 0 || !delivery) return invalidInput(fieldErrors);
+  if (Object.keys(fieldErrors).length > 0 || !delivery || !phone) return invalidInput(fieldErrors);
 
   const result = await createSupabaseCommerceRepository(await requestFingerprint()).checkout({
     quoteId,
@@ -129,15 +129,15 @@ export async function submitGuestCheckout(
       orderNumber: null,
       orderStatus: null,
       statusPath: null,
+      paymentRedirectUrl: null,
     };
   }
 
   const payment = await beginGuestPayment(guestOrderToken, phone, await requestFingerprint());
-  if (payment.ok) redirect(payment.redirectUrl);
 
   return {
     status: "success",
-    message: payment.message,
+    message: payment.ok ? "Zamówienie zapisane. Przekierowujemy do płatności." : payment.message,
     fieldErrors: {},
     retryable: false,
     refreshSummary: false,
@@ -146,5 +146,6 @@ export async function submitGuestCheckout(
     orderNumber: result.data.orderNumber,
     orderStatus: result.data.orderStatus,
     statusPath: result.data.statusPath,
+    paymentRedirectUrl: payment.ok ? payment.redirectUrl : null,
   };
 }

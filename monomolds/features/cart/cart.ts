@@ -125,6 +125,12 @@ export function writeDiscountSnapshot(code: string): string {
   return normalized;
 }
 
+export function clearCartSnapshots(): void {
+  writeCartSnapshot([]);
+  writeGiftSnapshot([]);
+  writeDiscountSnapshot("");
+}
+
 export function addMerchandiseToCart(merchandiseId: string, quantity = 1): CartItem[] {
   return writeCartSnapshot(addCartItem(readCartSnapshot(), merchandiseId, quantity));
 }

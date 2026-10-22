@@ -11,6 +11,7 @@ export type CheckoutFormState = {
   orderNumber: string | null;
   orderStatus: "pending_payment" | null;
   statusPath: string | null;
+  paymentRedirectUrl: string | null;
 };
 
 export const initialCheckoutFormState: CheckoutFormState = {
@@ -24,4 +25,5 @@ export const initialCheckoutFormState: CheckoutFormState = {
   orderNumber: null,
   orderStatus: null,
   statusPath: null,
+  paymentRedirectUrl: null,
 };
