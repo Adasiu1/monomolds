@@ -16,6 +16,7 @@ export function CheckoutFromCart() {
   const discountCode = useSyncExternalStore(subscribeToCart, readDiscountSnapshot, () => "");
   const [quotes, setQuotes] = useState<Record<DeliveryMethod, Quote> | null>(null);
   const [error, setError] = useState("");
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
   const quoteRequestId = useRef(0);
 
   const fetchQuotes = useCallback(async (): Promise<
@@ -65,12 +66,12 @@ export function CheckoutFromCart() {
     return () => window.clearTimeout(timeout);
   }, [loadQuotes, quotes]);
 
-  if (items.length === 0) return <div className="cart-checkout-error"><Notice tone="error" title="Nie można przejść do checkoutu">Koszyk jest pusty. Wróć do katalogu, aby przygotować zamówienie.</Notice><LinkButton href="/koszyk" variant="secondary">Wróć do koszyka</LinkButton></div>;
+  if (items.length === 0 && !orderSubmitted) return <div className="cart-checkout-error"><Notice tone="error" title="Nie można przejść do checkoutu">Koszyk jest pusty. Wróć do katalogu, aby przygotować zamówienie.</Notice><LinkButton href="/koszyk" variant="secondary">Wróć do koszyka</LinkButton></div>;
   if (error) return <div className="cart-checkout-error"><Notice tone="error" title="Nie można przejść do checkoutu">{error}</Notice><LinkButton href="/koszyk" variant="secondary">Wróć do koszyka</LinkButton></div>;
   if (!quotes) return <p role="status" className="ui-field-note">Przygotowujemy aktualne podsumowanie...</p>;
   const selectedGiftQuantity = quotes.inpost_locker.giftPromotion.selectedItems.reduce((sum, item) => sum + item.quantity, 0);
   if (selectedGiftQuantity < quotes.inpost_locker.giftPromotion.earnedQuantity) {
     return <div className="cart-checkout-error"><Notice tone="error" title="Wybierz należne gratisy">Wróć do koszyka i wybierz wszystkie gratisowe formy przed podaniem danych do wysyłki.</Notice><LinkButton href="/koszyk" variant="secondary">Wybierz gratisy</LinkButton></div>;
   }
-  return <CheckoutForm quotes={quotes} onRefreshQuotes={loadQuotes} />;
+  return <CheckoutForm quotes={quotes} onRefreshQuotes={loadQuotes} onOrderSubmitted={() => setOrderSubmitted(true)} />;
 }

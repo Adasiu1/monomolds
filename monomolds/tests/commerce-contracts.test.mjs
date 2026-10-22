@@ -20,6 +20,16 @@ import {
   normalizeGuestPhone,
   orderStatusLabels,
 } from "../features/order-status/order-status.ts";
+import { normalizeCheckoutPhone } from "../features/checkout/phone.ts";
+
+test("normalizes checkout phone numbers to include the selected country's calling code", () => {
+  assert.equal(normalizeCheckoutPhone("PL", "123 123 123"), "+48123123123");
+  assert.equal(normalizeCheckoutPhone("PL", "+48 123 123 123"), "+48123123123");
+  assert.equal(normalizeCheckoutPhone("DE", "030 12345678"), "+493012345678");
+  assert.equal(normalizeCheckoutPhone("GB", "020 1234 5678"), "+442012345678");
+  assert.equal(normalizeCheckoutPhone("PL", "+49 123 123 123"), null);
+  assert.equal(normalizeCheckoutPhone("XX", "123456789"), null);
+});
 
 test("validates the guest order token and phone before lookup", () => {
   assert.equal(isGuestOrderToken("a".repeat(64)), true);

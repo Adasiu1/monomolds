@@ -17,7 +17,7 @@ export type PaymentStore = {
   complete(attemptId: string, providerOrderId: number): Promise<void>;
 };
 export type StartPaymentResult = { ok: true; attemptId: string; expiresAt: string; redirectUrl: string }
-  | { ok: false; code: 'PAYMENT_UNAVAILABLE'|'PAYMENT_PENDING'|'PAYMENT_NOT_ALLOWED'; message: string };
+  | { ok: false; code: 'PAYMENT_UNAVAILABLE'|'PAYMENT_PENDING'|'PAYMENT_RATE_LIMITED'|'PAYMENT_NOT_ALLOWED'; message: string };
 export const hashGuestToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
 export function createPaymentService(store: PaymentStore, config: P24Config, fetcher: typeof fetch = fetch, now = () => Date.now()) {
@@ -48,10 +48,24 @@ export function createPaymentService(store: PaymentStore, config: P24Config, fet
       await verifyAndComplete(attempt, transaction);
       return { status: 'processed' as const };
     },
-    async start(token: string, phone: string, fingerprint: string): Promise<StartPaymentResult> {
+    async start(
+      token: string,
+      phone: string,
+      fingerprint: string,
+      options: { returnedFromProvider?: boolean } = {},
+    ): Promise<StartPaymentResult> {
       let prepared;
       try { prepared = await store.prepare(hashGuestToken(token), phone, fingerprint); }
-      catch { return { ok: false, code: 'PAYMENT_NOT_ALLOWED', message: 'Nie można teraz rozpocząć płatności. Sprawdź dane i odśwież status zamówienia.' }; }
+      catch (error) {
+        const code = error instanceof Error ? error.message : "";
+        if (code === "PAYMENT_PENDING") {
+          return { ok: false, code: "PAYMENT_PENDING", message: "Poprzednia próba płatności jest jeszcze sprawdzana. Odśwież status za chwilę." };
+        }
+        if (code === "RATE_LIMITED") {
+          return { ok: false, code: "PAYMENT_RATE_LIMITED", message: "Wykonano zbyt wiele prób płatności. Odczekaj chwilę i spróbuj ponownie." };
+        }
+        return { ok: false, code: 'PAYMENT_NOT_ALLOWED', message: 'Nie można rozpocząć płatności. Sprawdź dane i odśwież status zamówienia.' };
+      }
       const { attempt, fresh, email, orderNumber } = prepared;
       try {
         if (fresh) {
@@ -64,19 +78,51 @@ export function createPaymentService(store: PaymentStore, config: P24Config, fet
           await store.saveToken(attempt.id, providerToken);
           return { ok: true, attemptId: attempt.id, expiresAt: attempt.expires_at, redirectUrl: provider.redirectUrl(providerToken) };
         }
-        if (attempt.provider_token && now() < Date.parse(attempt.expires_at)) {
+        if (!options.returnedFromProvider && attempt.provider_token && now() < Date.parse(attempt.expires_at)) {
           return { ok: true, attemptId: attempt.id, expiresAt: attempt.expires_at, redirectUrl: provider.redirectUrl(attempt.provider_token) };
         }
         // Never open a second payment while the first may still accept money.
         const transaction = await provider.lookup(attempt.session_id);
         if (transaction && (transaction.amount !== attempt.amount || transaction.currency !== attempt.currency)) throw new PaymentProviderError('PAYMENT_MISMATCH');
+        if (options.returnedFromProvider && transaction?.status === 3) {
+          return {
+            ok: false,
+            code: 'PAYMENT_PENDING',
+            message: 'Operator zwrócił płatność. Skontaktuj się z nami, aby sprawdzić zwrot.',
+          };
+        }
+        if (options.returnedFromProvider && transaction?.status === 2) {
+          return {
+            ok: false,
+            code: 'PAYMENT_PENDING',
+            message: 'Operator potwierdził płatność - aktualizujemy status zamówienia',
+          };
+        }
+        if (options.returnedFromProvider && transaction?.status === 1) {
+          return {
+            ok: false,
+            code: 'PAYMENT_PENDING',
+            message: 'Płatność jest nadal przetwarzana przez operatora. Poczekaj na aktualizację statusu.',
+          };
+        }
         if (now() >= Date.parse(attempt.expires_at) + 120000 && (!transaction || transaction.status === 0)) {
           await store.endAttempt(attempt.id, 'expired');
           return { ok: false, code: 'PAYMENT_UNAVAILABLE', message: 'Poprzednia próba wygasła. Możesz teraz ponowić płatność.' };
         }
+        if (options.returnedFromProvider && (!transaction || transaction.status === 0)) {
+          return {
+            ok: false,
+            code: 'PAYMENT_PENDING',
+            message: 'Ta próba płatności nie została zakończona, sprawdź jej status na stronie pośrednika.',
+          };
+        }
         return { ok: false, code: 'PAYMENT_PENDING', message: 'Sprawdzamy poprzednią próbę płatności. Odśwież status za chwilę.' };
       } catch (error) {
-        console.error('Payment start failed.', { attemptId: attempt.id, code: error instanceof PaymentProviderError ? error.code : 'PAYMENT_STORAGE_FAILED' });
+        const errorCode = error instanceof PaymentProviderError ? error.code : 'PAYMENT_STORAGE_FAILED';
+        console.error('Payment start failed.', { attemptId: attempt.id, code: errorCode });
+        if (errorCode === "PROVIDER_RATE_LIMITED") {
+          return { ok: false, code: "PAYMENT_RATE_LIMITED", message: "Operator płatności ograniczył liczbę prób. Odczekaj chwilę i spróbuj ponownie." };
+        }
         return { ok: false, code: 'PAYMENT_UNAVAILABLE', message: 'Nie udało się połączyć z płatnościami. Zamówienie jest zapisane. Spróbuj ponownie za chwilę.' };
       }
     },

@@ -5,11 +5,16 @@ import { paymentConfig } from './przelewy24';
 import { createPaymentStore, paymentDatabase } from './repository';
 import { createPaymentService, type StartPaymentResult } from './service';
 
-export async function beginGuestPayment(token: string, phone: string, fingerprint: string): Promise<StartPaymentResult> {
+export async function beginGuestPayment(
+  token: string,
+  phone: string,
+  fingerprint: string,
+  options?: { returnedFromProvider?: boolean },
+): Promise<StartPaymentResult> {
   if (!isGuestOrderToken(token) || !isGuestPhone(phone)) return { ok: false, code: 'PAYMENT_NOT_ALLOWED', message: 'Nie udało się potwierdzić danych zamówienia.' };
   try {
     const config = paymentConfig();
-    const result = await createPaymentService(createPaymentStore(), config).start(token, normalizeGuestPhone(phone), fingerprint);
+    const result = await createPaymentService(createPaymentStore(), config).start(token, normalizeGuestPhone(phone), fingerprint, options);
     if (result.ok) {
       (await cookies()).set(`p24_guest_${result.attemptId}`, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/api/payments/przelewy24/return', maxAge: 86400 });
     }

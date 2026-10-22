@@ -9,12 +9,21 @@ import { Notice } from "@/components/ui/feedback";
 import { OrderBenefits } from "@/components/order-benefits";
 import { formatPrice } from "@/lib/format-price";
 import type { DeliveryMethod, Quote } from "@/lib/commerce/contracts";
+import {
+  clearCartSnapshots,
+  readCartSnapshot,
+  readDiscountSnapshot,
+  readGiftSnapshot,
+} from "@/features/cart/cart";
 
+import { normalizeCheckoutPhone } from "./phone";
+import { PhoneNumberField } from "./phone-number-field";
 import { initialCheckoutFormState } from "./types";
 
 type CheckoutFormProps = {
   quotes: Record<DeliveryMethod, Quote>;
   onRefreshQuotes: () => Promise<void>;
+  onOrderSubmitted: () => void;
 };
 
 function errorFor(errors: Record<string, string[]>, field: string) {
@@ -41,7 +50,9 @@ function validateBeforeSubmit(formData: FormData, deliveryMethod: DeliveryMethod
   if (!/^\S+@\S+\.\S+$/.test(value("email"))) errors["customer.email"] = ["Podaj prawidłowy adres e-mail."];
   if (!value("firstName")) errors["customer.firstName"] = ["Podaj imię."];
   if (!value("lastName")) errors["customer.lastName"] = ["Podaj nazwisko."];
-  if (!/^\+?[0-9 ]{7,15}$/.test(value("phone"))) errors["customer.phone"] = ["Podaj prawidłowy numer telefonu."];
+  if (!normalizeCheckoutPhone(value("phoneCountryCode"), value("phoneNational"))) {
+    errors["customer.phone"] = ["Podaj prawidłowy numer telefonu dla wybranego kraju."];
+  }
   if (formData.get("acceptedTerms") !== "on") errors.acceptedTerms = ["Akceptacja regulaminu jest wymagana."];
   if (deliveryMethod === "inpost_locker" && !value("pointId")) errors["delivery.pointId"] = ["Wybierz paczkomat."];
   if (deliveryMethod === "courier") {
@@ -77,14 +88,35 @@ const fieldNameForError: Record<string, string> = {
   "invoice.address.city": "invoiceCity", acceptedLeadTimeNoticeVersion: "acceptedLeadTimeNotice",
 };
 
-export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
+function preserveFormValuesOnReset(form: HTMLFormElement) {
+  for (const element of Array.from(form.elements)) {
+    if (element instanceof HTMLInputElement) {
+      if (element.type === "hidden" || element.type === "submit" || element.type === "button") continue;
+      if (element.type === "checkbox" || element.type === "radio") {
+        element.defaultChecked = element.checked;
+      } else {
+        element.defaultValue = element.value;
+      }
+    } else if (element instanceof HTMLTextAreaElement) {
+      element.defaultValue = element.value;
+    } else if (element instanceof HTMLSelectElement) {
+      for (const option of Array.from(element.options)) {
+        option.defaultSelected = option.selected;
+      }
+    }
+  }
+}
+
+export function CheckoutForm({ quotes, onRefreshQuotes, onOrderSubmitted }: CheckoutFormProps) {
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("inpost_locker");
   const [pointHelpOpen, setPointHelpOpen] = useState(false);
+  const pointHelpRef = useRef<HTMLDivElement>(null);
   const [clientErrors, setClientErrors] = useState<Record<string, string[]>>({});
   const [wantsInvoice, setWantsInvoice] = useState(false);
   const [state, formAction, pending] = useActionState(submitGuestCheckout, initialCheckoutFormState);
   const idempotencyKeyRef = useRef<HTMLInputElement>(null);
   const guestOrderTokenRef = useRef<HTMLInputElement>(null);
+  const handledOrderNumberRef = useRef<string | null>(null);
   const quote = quotes[deliveryMethod];
   const errors = { ...clientErrors, ...state.fieldErrors };
   const requiresRefresh = state.refreshSummary && state.rejectedQuoteId === quote.id;
@@ -94,7 +126,48 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
     if (guestOrderTokenRef.current) guestOrderTokenRef.current.value = "";
   }, [quote.id]);
 
+  useEffect(() => {
+    if (state.status !== "success" || !state.orderNumber || handledOrderNumberRef.current === state.orderNumber) return;
+    handledOrderNumberRef.current = state.orderNumber;
+    onOrderSubmitted();
+
+    const currentItems = readCartSnapshot();
+    const currentGifts = readGiftSnapshot();
+    const sameItems = currentItems.length === quote.items.length
+      && quote.items.every((item) => currentItems.some((cartItem) =>
+        cartItem.merchandiseId === item.merchandiseId && cartItem.quantity === item.quantity,
+      ));
+    const sameGifts = currentGifts.length === quote.giftPromotion.selectedItems.length
+      && quote.giftPromotion.selectedItems.every((gift) => currentGifts.some((cartGift) =>
+        cartGift.merchandiseId === gift.merchandiseId && cartGift.quantity === gift.quantity,
+      ));
+    const sameDiscount = readDiscountSnapshot() === (quote.appliedDiscount?.code ?? "");
+
+    if (sameItems && sameGifts && sameDiscount) clearCartSnapshots();
+    if (state.paymentRedirectUrl) window.location.assign(state.paymentRedirectUrl);
+  }, [onOrderSubmitted, quote, state]);
+
+  useEffect(() => {
+    if (!pointHelpOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !pointHelpRef.current?.contains(event.target)) {
+        setPointHelpOpen(false);
+      }
+    };
+    const timeout = window.setTimeout(() => setPointHelpOpen(false), 5000);
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => {
+      window.clearTimeout(timeout);
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+    };
+  }, [pointHelpOpen]);
+
   if (state.status === "success" && state.orderNumber && state.statusPath) {
+    if (state.paymentRedirectUrl) {
+      return <p role="status" className="ui-field-note">Zamówienie zapisane. Przekierowujemy do płatności...</p>;
+    }
     return <section className="checkout-confirmation" aria-labelledby="checkout-confirmation-title">
       <p className="checkout-confirmation-eyebrow">Zamówienie przyjęte</p>
       <h1 id="checkout-confirmation-title">{state.orderNumber}</h1>
@@ -118,6 +191,8 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
           const field = form.elements.namedItem(fieldNameForError[firstError] ?? firstError);
           if (field instanceof HTMLElement) field.focus();
         });
+      } else {
+        preserveFormValuesOnReset(event.currentTarget);
       }
     }}>
       <input type="hidden" name="quoteId" value={quote.id} />
@@ -126,7 +201,6 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
       <input ref={guestOrderTokenRef} type="hidden" name="guestOrderToken" />
       <header className="checkout-heading">
         <h1>Dane do zamówienia</h1>
-        <p>Potrzebujemy ich, aby zrealizować dostawę i skontaktować się w sprawie zamówienia.</p>
       </header>
 
       {state.message ? <div id="checkout-message"><Notice tone={state.status === "error" ? "error" : "success"} title={state.status === "error" ? "Nie udało się złożyć zamówienia" : "Zamówienie zapisane"}>{state.message}</Notice></div> : null}
@@ -145,7 +219,12 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
           <TextField id="lastName" name="lastName" label="Nazwisko" autoComplete="family-name" required error={errorFor(errors, "customer.lastName")} />
         </div>
         <TextField id="email" name="email" label="Adres e-mail" type="email" autoComplete="email" inputMode="email" spellCheck={false} required hint="Wyślemy na niego potwierdzenie zamówienia." error={errorFor(errors, "customer.email")} />
-        <TextField id="phone" name="phone" label="Numer telefonu" type="tel" autoComplete="tel" inputMode="tel" required hint="Użyjemy go tylko, gdy dostawa będzie wymagała kontaktu." error={errorFor(errors, "customer.phone")} />
+        <PhoneNumberField
+          id="phone"
+          label="Numer telefonu"
+          nationalNumberName="phoneNational"
+          error={errorFor(errors, "customer.phone")}
+        />
       </fieldset>
 
       <fieldset className="checkout-section" disabled={pending}>
@@ -159,7 +238,7 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
         {errorFor(errors, "delivery.method") ? <p id="delivery-method-error" className="ui-field-error">{errorFor(errors, "delivery.method")}</p> : null}
         {deliveryMethod === "inpost_locker" ? <>
           <TextField id="pointId" name="pointId" label="Paczkomat" autoComplete="off" spellCheck={false} required hint="Kod punktu, np. WAW01A." error={errorFor(errors, "delivery.pointId")} />
-          <div className={`checkout-point-help${pointHelpOpen ? " checkout-point-help--open" : ""}`}>
+          <div ref={pointHelpRef} className={`checkout-point-help${pointHelpOpen ? " checkout-point-help--open" : ""}`}>
             <button
               className="checkout-point-help-trigger"
               type="button"
@@ -187,12 +266,26 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
         </div>}
       </fieldset>
 
+      <fieldset className="checkout-section">
+        <legend>Metoda płatności</legend>
+        <div className="checkout-delivery-options" role="radiogroup" aria-label="Dostępna metoda płatności">
+          <label className="checkout-payment-option">
+            <input type="radio" name="payment-provider" checked readOnly />
+            <span>
+              <strong>Przelewy24</strong>
+              <small>Płatność online</small>
+            </span>
+            <span className="checkout-payment-selected">Wybrana</span>
+          </label>
+        </div>
+      </fieldset>
+
       <fieldset className="checkout-section" disabled={pending}>
         <legend>Faktura</legend>
         <Checkbox id="wantsInvoice" name="wantsInvoice" label="Chcę otrzymać fakturę" checked={wantsInvoice} onChange={(event) => setWantsInvoice(event.currentTarget.checked)} />
         {wantsInvoice ? <div className="checkout-invoice-fields">
           <TextField id="invoiceCompanyName" name="invoiceCompanyName" label="Nazwa firmy" autoComplete="organization" required error={errorFor(errors, "invoice.companyName")} />
-          <TextField id="invoiceNip" name="invoiceNip" label="NIP" autoComplete="off" inputMode="numeric" spellCheck={false} required hint="Możesz wpisać NIP z prefiksem PL, spacjami lub myślnikami." error={errorFor(errors, "invoice.nip")} />
+          <TextField id="invoiceNip" name="invoiceNip" label="NIP" autoComplete="off" inputMode="numeric" spellCheck={false} required hint="" error={errorFor(errors, "invoice.nip")} />
           <TextField id="invoiceEmail" name="invoiceEmail" label="E-mail do faktury (opcjonalnie)" type="email" autoComplete="email" inputMode="email" spellCheck={false} hint="Jeśli pozostawisz puste, użyjemy e-maila zamówienia." error={errorFor(errors, "invoice.email")} />
           <div className="checkout-field-grid">
             <TextField id="invoiceAddressLine1" name="invoiceAddressLine1" label="Ulica i numer" autoComplete="billing address-line1" required error={errorFor(errors, "invoice.address.line1")} />
@@ -206,7 +299,7 @@ export function CheckoutForm({ quotes, onRefreshQuotes }: CheckoutFormProps) {
 
       <fieldset className="checkout-section" disabled={pending}>
         <legend>Potwierdzenie</legend>
-        <Checkbox id="acceptedTerms" name="acceptedTerms" label={<>Akceptuję <a href="/regulamin" target="_blank" rel="noreferrer">regulamin sklepu</a> i potwierdzam obowiązek zapłaty.</>} required error={errorFor(errors, "acceptedTerms")} />
+        <Checkbox id="acceptedTerms" name="acceptedTerms" label={<>Akceptuję <a className="checkout-terms-link" href="/regulamin" target="_blank" rel="noreferrer">regulamin</a> sklepu i potwierdzam obowiązek zapłaty.</>} required error={errorFor(errors, "acceptedTerms")} />
         {quote.requiresLeadTimeConfirmation && quote.leadTimeNotice && quote.leadTimeNoticeVersion ? <>
           <input type="hidden" name="leadTimeNoticeVersion" value={quote.leadTimeNoticeVersion} />
           <Checkbox id="acceptedLeadTimeNotice" name="acceptedLeadTimeNotice" label={quote.leadTimeNotice} required error={errorFor(errors, "acceptedLeadTimeNoticeVersion")} />
